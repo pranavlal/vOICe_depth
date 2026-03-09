@@ -1,0 +1,8 @@
+torch
+torchvision
+opencv-python
+numpy
+pyvirtualcam
+depthai
+timm
+pywin32; sys_platform == 'win32'

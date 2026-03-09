@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+venv/
+.env
+dist/
+*.zip
+out*.txt
+pip_out*.txt
+test_out*.txt
+test_cv2.py
+tts_test*.py
+run_git_cmds.py
+test_git.py
+git_test_output.txt
+git_setup_log.txt
