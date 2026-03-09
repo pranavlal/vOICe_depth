@@ -1,4 +1,0 @@
-STDOUT:
-git version 2.53.0.windows.1
-
-STDERR:
