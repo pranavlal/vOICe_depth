@@ -10,36 +10,67 @@ This project aims to be completely screen-reader friendly and uses native TTS to
 * Windows or Linux
 * For Virtual Camera: **OBS Studio** (Click "Start Virtual Camera") or UnityCapture
 
-## Installation
+## Download
+
+You can download the latest standalone version of vOICe Depth directly from the [GitHub Releases](https://github.com/pranavlal/vOICe_depth/releases) page:
+1. Navigate to the **Releases** section on the right-hand side of the GitHub repository (or use the link above).
+2. Download the `vOICe_depth_Release.zip` (or highest version available) from the Assets under the latest release.
+3. Extract the ZIP file to a folder on your computer.
+
+## Installation and execution
+Inside the extracted folder, there are automated setup and run scripts. 
 
 ### Windows
-1. Open PowerShell in this folder.
-2. Run `.\install.ps1` -- this will create a local Python virtual environment (`venv`) and download PyTorch, OpenCV, and other requirements.
-3. If it asks about execution policies, you might need to run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` first.
+**First Time Setup:**
+1. Open the extracted folder in File Explorer.
+2. **Right-click** on the empty space, and select "Open in Terminal". Alternatively, open PowerShell and `cd` into this folder.
+3. Run `.\install.ps1`. This creates an isolated Python virtual environment (`venv`) and installs PyTorch, OpenCV, and pyvirtualcam.
+   - *Note: If you receive an execution policy error, run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` first.*
+
+**Every Time You Run:**
+1. Double-click `run.bat` (or run `.\run.bat` via terminal). The script will automatically activate the Python environment and launch the graphical interface. 
+2. Alternatively, you can activate the environment manually and run the scripts:
+   ```powershell
+   .\venv\Scripts\Activate.ps1
+   python vd.py
+   # OR
+   python voice_depth_virtualcam.py
+   ```
 
 ### Linux
-1. Open terminal in this folder.
-2. Run `chmod +x install.sh` and then `./install.sh`. 
+**First Time Setup:**
+1. Open a terminal and `cd` into the extracted folder.
+2. Make the install script executable: `chmod +x install.sh`
+3. Run the installer: `./install.sh`. This automatically installs system requirements (like `python3-venv` and `v4l2loopback-dkms` for virtual cameras), sets up a Python virtual environment, and installs Python libraries.
 
-## How to Run
-After installation, double click `run.bat` on Windows or execute `./run.sh` on Linux. The script will automatically activate the Python environment and launch the graphical interface.
+**Every Time You Run:**
+1. Run `./run.sh` to automatically activate the environment and start the application. 
+2. Alternatively, you can run manually inside the folder:
+   ```bash
+   source venv/bin/activate
+   python vd.py
+   # OR
+   python voice_depth_virtualcam.py
+   ```
 
 There are two main scripts:
 1. `vd.py`: Runs the standard application and displays the depth window on-screen.
 2. `voice_depth_virtualcam.py`: Same as above, but outputs to a Virtual Web Camera instead.
 
 ## Available Hotkeys (Audio Feedback Included)
-* `c` : Switch Camera Input
-* `i` : Toggle Color Inversion (for The vOICe)
-* `a` : Toggle Auto-ranging (dynamically scales depth)
-* `g` : Cycle Gamma correction (e.g. 0.60, 0.75, 1.0)
-* `v` : Flip Image Vertically (Up/Down)
-* `h` : Flip Image Horizontally (Left/Right)
-* `[ / ]` : Decrease / Increase Near Depth Limit (when auto-range is OFF)
-* `- / =` : Decrease / Increase Far Depth Limit (when auto-range is OFF)
-* `r` : Reset to Default Parameters
-* `s` : Save the current depth frame to disk
-* `q / ESC` : Quit the application
+All hotkey presses provide audio feedback using your system's native text-to-speech.
+
+* `c` : **Switch Camera Input**. Cycles through available camera devices if you have multiple webcams connected.
+* `i` : **Toggle Color Inversion** (for The vOICe). Flips the depth grayscale map (white becomes black and vice-versa). This is useful because *The vOICe* translates bright pixels into loud sounds and dark pixels into quiet ones.
+* `a` : **Toggle Auto-ranging**. Dynamically scales the depth map so that the nearest object in the frame is always the brightest and the farthest is the darkest. This maximizes the contrast for your current view. When turned OFF, the app uses fixed distance limits (which can be adjusted manually).
+* `g` : **Cycle Gamma correction** (e.g. 0.50, 0.60, 0.75, 1.0). Adjusts the mid-tone brightness. Lower gamma values make the overall image brighter, which can help bring out details in darker/farther areas.
+* `v` : **Flip Image Vertically** (Up/Down). Useful if your camera is mounted upside down.
+* `h` : **Flip Image Horizontally** (Left/Right). Mirrors the camera image.
+* `[ / ]` : **Decrease / Increase Near Depth Limit**. Only works when Auto-ranging is OFF. Adjusts the minimum distance threshold.
+* `- / =` : **Decrease / Increase Far Depth Limit**. Only works when Auto-ranging is OFF. Adjusts the maximum distance threshold.
+* `r` : **Reset to Default Parameters**. Re-enables Auto-ranging and Inversion, resets Gamma to 0.60, and restores normal image orientation.
+* `s` : **Save Frame**. Saves the current depth frame to your disk as a PNG image file.
+* `q / ESC` : **Quit** the application.
 
 ## Virtual Camera Setup (Windows)
 If using `voice_depth_virtualcam.py`, your depth map is sent to a virtual webcam driver. The easiest and most compatible way to link this to The vOICe is to install [OBS Studio](https://obsproject.com/). 
