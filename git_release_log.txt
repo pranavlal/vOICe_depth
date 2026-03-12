@@ -1,0 +1,31 @@
+[git status] Exit: 0
+STDOUT: On branch master
+Your branch is up to date with 'origin/master'.
+
+nothing to commit, working tree clean
+[git add .] Exit: 0
+[git commit -m Prepare release 0.1] Exit: 1
+STDOUT: On branch master
+Your branch is up to date with 'origin/master'.
+
+nothing to commit, working tree clean
+[git push] Exit: 0
+STDERR: Everything up-to-date
+[git tag 0.1] Exit: 128
+STDERR: fatal: tag '0.1' already exists
+[git push origin 0.1] Exit: 0
+STDERR: Everything up-to-date
+[C:\Program Files\GitHub CLI\gh.exe release view 0.1] Exit: 0
+STDOUT: title:	Release 0.1
+tag:	0.1
+draft:	false
+prerelease:	false
+immutable:	false
+author:	pranavlal
+created:	2026-03-12T11:35:31Z
+published:	2026-03-12T11:35:38Z
+url:	https://github.com/pranavlal/vOICe_depth/releases/tag/0.1
+asset:	vOICe_depth_v0.1.zip
+--
+Initial 0.1 release
+Release 0.1 already exists on GitHub.
