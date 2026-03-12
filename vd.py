@@ -60,7 +60,7 @@ class DepthParams:
     gamma: float = 0.60
     median_ksize: int = 5
 
-    flip_ud: bool = True
+    flip_ud: bool = False
     flip_lr: bool = False
 
     manual_near_midas: float = 1000.0
@@ -249,7 +249,7 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--gamma", type=float, default=0.60)
     ap.add_argument("--median-ksize", type=int, default=5)
     ap.add_argument("--no-flip-ud", action="store_true")
-    ap.add_argument("--flip-lr", action="store_true")
+    ap.add_argument("--no-flip-lr", action="store_true")
 
     ap.add_argument("--window", default="vOICe Depth (capture)")
     ap.add_argument("--window-w", type=int, default=960)
@@ -268,7 +268,7 @@ def main() -> int:
         gamma=float(args.gamma),
         median_ksize=int(args.median_ksize),
         flip_ud=not args.no_flip_ud,
-        flip_lr=bool(args.flip_lr),
+        flip_lr=not args.no_flip_lr,
     )
 
     out_size = (int(args.width), int(args.height))
@@ -485,8 +485,8 @@ def main() -> int:
                 params.auto_range = True
                 params.gamma = 0.60
                 params.median_ksize = 5
-                params.flip_ud = True
-                params.flip_lr = False
+                params.flip_ud = not args.no_flip_ud
+                params.flip_lr = not args.no_flip_lr
                 gamma_idx = min(range(len(gamma_cycle)), key=lambda i: abs(gamma_cycle[i] - params.gamma))
                 state.clear()
                 tts_queue.put("Resetting parameters to defaults")

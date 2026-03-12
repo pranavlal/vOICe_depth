@@ -1,0 +1,4 @@
+[git rm -r --cached -f .] Exit: 0
+[git add .] Exit: 0
+[git commit -m Clean up unnecessary files from repo] Exit: 0
+[git push origin master] Exit: 0

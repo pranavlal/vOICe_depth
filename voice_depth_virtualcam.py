@@ -57,6 +57,12 @@ class DepthParams:
     auto_far_p_oak: float = 92.0
     auto_smooth: float = 0.85
     
+    gamma: float = 0.60
+    median_ksize: int = 5
+    
+    flip_ud: bool = False
+    flip_lr: bool = False
+    
     manual_near_midas: float = 1000.0
     manual_far_midas: float = 100.0
     manual_near_oak: float = 300.0
@@ -137,6 +143,11 @@ def depth_to_grayscale_midas(disparity: np.ndarray, params: DepthParams, state: 
     if params.invert:
         gray = 255 - gray
 
+    if params.flip_ud:
+        gray = cv2.flip(gray, 0)
+    if params.flip_lr:
+        gray = cv2.flip(gray, 1)
+
     return gray
 
 
@@ -181,6 +192,11 @@ def depth_to_grayscale_oak(depth_mm: np.ndarray, params: DepthParams, state: dic
     if params.invert:
         gray = 255 - gray
 
+    if params.flip_ud:
+        gray = cv2.flip(gray, 0)
+    if params.flip_lr:
+        gray = cv2.flip(gray, 1)
+
     return gray
 
 
@@ -207,6 +223,9 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--no-invert", action="store_true")
     ap.add_argument("--no-auto-range", action="store_true")
 
+    ap.add_argument("--no-flip-ud", action="store_true")
+    ap.add_argument("--no-flip-lr", action="store_true")
+
     ap.add_argument("--no-preview", action="store_true", help="Do not show any OpenCV window (virtual cam only)")
     ap.add_argument("--window", default="vOICe Depth (no HUD)")
 
@@ -223,7 +242,9 @@ def main() -> int:
 
     params = DepthParams(
         invert=not args.no_invert,
-        auto_range=not args.no_auto_range
+        auto_range=not args.no_auto_range,
+        flip_ud=not args.no_flip_ud,
+        flip_lr=not args.no_flip_lr
     )
     
     out_size = (int(args.width), int(args.height))
@@ -413,6 +434,14 @@ def main() -> int:
                     status = 'ON' if params.auto_range else 'OFF'
                     print(f"Auto-range: {status}")
                     tts_queue.put(f"Auto-range {status}")
+                elif k == ord("v"):
+                    params.flip_ud = not params.flip_ud
+                    status = 'ON' if params.flip_ud else 'OFF'
+                    print(f"Flip UD: {status}")
+                    tts_queue.put(f"Flip up down {status}")
+                elif k == ord("h"):
+                    params.flip_lr = not params.flip_lr
+                    tts_queue.put(f"Flip left right {'ON' if params.flip_lr else 'OFF'}")
 
     finally:
         if 'tts_queue' in locals():
