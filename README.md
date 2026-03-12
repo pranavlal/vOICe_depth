@@ -1,14 +1,18 @@
 # vOICe Depth
 
-**vOICe Depth** is an accessibility tool designed to bridge depth-perception hardware (like Intel RealSense/OAK-D cameras) or standard Webcams (via MiDaS neural networks) with [The vOICe](https://www.seeingwithsound.com/). It computes real-time depth maps and feeds them either to an on-screen window or directly to a Virtual Camera intended to be read by The vOICe. 
+**vOICe Depth** is a  companion  program to [The vOICe](https://www.seeingwithsound.com/) created by Dr., Peter BL. Meijer  which is a program that converts images to  sound allowing blind people to percieve images and live scenes. Traditionally, [The vOICe](https://www.seeingwithsound.com/) has had monocular vision though stereo vision support has been present in the softwarefrom  a long  time. Much has changed today since depth cameras are more readily availaable and  today, it is possible to even use ordinary webcams like depthcameras via ai models that convert frames to stereo images.  In other words, vOICe Depth is designed to bridge depth-perception hardware (like Intel RealSense/OAK-D cameras) or standard Webcams (via MiDaS neural networks) with [The vOICe](https://www.seeingwithsound.com/). It computes real-time depth maps and feeds them either to an on-screen window or directly to a Virtual Camera intended to be read by The vOICe. 
 
 This project aims to be completely screen-reader friendly and uses native TTS to announce hotkeys and camera changes.
+###Note:
+The virtual camera  support is indeed present but does not yet work with the vOICe at least natively.
 
 ## Requirements
 * Python 3.9+ 
 * A webcam **OR** an OAK-D Lite camera
 * Windows or Linux
 * For Virtual Camera: **OBS Studio** (Click "Start Virtual Camera") or UnityCapture
+###Note:
+I have created the program to also support Linux though the vOICe does  not natively support Linux unless you use the web version which runs in browsers that support web RTC.
 
 ## Download
 
@@ -23,7 +27,7 @@ Inside the extracted folder, there are automated setup and run scripts.
 ### Windows
 **First Time Setup:**
 1. Open the extracted folder in File Explorer.
-2. **Right-click** on the empty space, and select "Open in Terminal". Alternatively, open PowerShell and `cd` into this folder.
+2. **Right-click** on the empty space, and select "Open in Terminal". Alternatively, open PowerShell from the menu that  comes up when you  press  the windows key +   x and `cd` into this folder.
 3. Run `.\install.ps1`. This creates an isolated Python virtual environment (`venv`) and installs PyTorch, OpenCV, and pyvirtualcam.
    - *Note: If you receive an execution policy error, run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` first.*
 
@@ -39,7 +43,7 @@ Inside the extracted folder, there are automated setup and run scripts.
 
 ### Linux
 **First Time Setup:**
-1. Open a terminal and `cd` into the extracted folder.
+1. Open a terminal and `cd` into the extracted folder or  ssh into your linux machine and get into the folder.
 2. Make the install script executable: `chmod +x install.sh`
 3. Run the installer: `./install.sh`. This automatically installs system requirements (like `python3-venv` and `v4l2loopback-dkms` for virtual cameras), sets up a Python virtual environment, and installs Python libraries.
 
@@ -57,8 +61,8 @@ There are two main scripts:
 1. `vd.py`: Runs the standard application and displays the depth window on-screen.
 2. `voice_depth_virtualcam.py`: Same as above, but outputs to a Virtual Web Camera instead.
 
-## Available Hotkeys (Audio Feedback Included)
-All hotkey presses provide audio feedback using your system's native text-to-speech.
+## Available Hotkeys
+All hotkey presses provide audio feedback using your system's native text-to-speech capabilities.
 
 * `c` : **Switch Camera Input**. Cycles through available camera devices if you have multiple webcams connected.
 * `i` : **Toggle Color Inversion** (for The vOICe). Flips the depth grayscale map (white becomes black and vice-versa). This is useful because *The vOICe* translates bright pixels into loud sounds and dark pixels into quiet ones.
@@ -78,3 +82,6 @@ If using `voice_depth_virtualcam.py`, your depth map is sent to a virtual webcam
 2. Click **Start Virtual Camera** in the bottom right corner.
 3. Keep OBS open, and run `voice_depth_virtualcam.py`. It will detect the OBS camera and pipe the depth map into it.
 4. Open The vOICe and set its camera source to **OBS Virtual Camera**.
+#A note on development
+In the interest of transparancy, I have vibe coded this program. I have  however run the program on my ownmachines  because I am a user of [The vOICe](https://www.seeingwithsound.com/). The program  is  also fully open  source and you are free to inspect the source code and to buildupon it.
+I welcome constructive engagement and  will do my best to fix bugs.
