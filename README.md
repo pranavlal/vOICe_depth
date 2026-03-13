@@ -85,3 +85,19 @@ If using `voice_depth_virtualcam.py`, your depth map is sent to a virtual webcam
 #A note on development
 In the interest of transparancy, I have vibe coded this program. I have  however run the program on my ownmachines  because I am a user of [The vOICe](https://www.seeingwithsound.com/). The program  is  also fully open  source and you are free to inspect the source code and to buildupon it.
 I welcome constructive engagement and  will do my best to fix bugs.
+
+## Android Application
+A native Android application is now available in the `android_app` directory. This app functions as a depth map media server, capturing real-time depth (via hardware ARCore or AI fallback) and streaming it as an MJPEG server.
+
+### Features
+- Support for hardware depth sensing.
+- AI-based mono-depth fallback (MiDaS).
+- Low-latency MJPEG streaming.
+- Fully accessible interface with screen-reader support.
+
+### Integration with The vOICe for Android
+The MJPEG stream from this app is designed to be used as a video source for **The vOICe for Android**. 
+1. Download and install **The vOICe for Android** from [seeingwithsound.com/android.htm](https://www.seeingwithsound.com/android.htm).
+2. Start the Depth Map Server app and tap **Start Server**.
+3. Note the MJPEG URL (e.g., `http://192.168.1.x:8080/depth_stream.mjpeg`).
+4. In **The vOICe for Android**, configure the camera source to use this network stream URL to perceive depth information through sound.

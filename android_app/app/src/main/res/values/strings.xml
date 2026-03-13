@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">vOICe Depth</string>
+    <string name="start_server">Start Server</string>
+    <string name="stop_server">Stop Server</string>
+    <string name="server_running">Server Running at:</string>
+    <string name="server_stopped">Server Stopped</string>
+    <string name="copy_to_clipboard">URL copied to clipboard</string>
+</resources>
