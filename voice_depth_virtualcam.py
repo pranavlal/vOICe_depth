@@ -179,6 +179,7 @@ def depth_to_grayscale_oak(depth_mm: np.ndarray, params: DepthParams, state: dic
     else:
         n = int(params.manual_near_oak)
         f = int(params.manual_far_oak)
+        if f <= n: f = n + 1
 
     d = depth_mm.astype(np.float32)
     invalid = (d <= 0)
@@ -223,8 +224,8 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--no-invert", action="store_true")
     ap.add_argument("--no-auto-range", action="store_true")
 
-    ap.add_argument("--no-flip-ud", action="store_true")
-    ap.add_argument("--no-flip-lr", action="store_true")
+    ap.add_argument("--flip-ud", action="store_true")
+    ap.add_argument("--flip-lr", action="store_true")
 
     ap.add_argument("--no-preview", action="store_true", help="Do not show any OpenCV window (virtual cam only)")
     ap.add_argument("--window", default="vOICe Depth (no HUD)")
@@ -243,8 +244,8 @@ def main() -> int:
     params = DepthParams(
         invert=not args.no_invert,
         auto_range=not args.no_auto_range,
-        flip_ud=not args.no_flip_ud,
-        flip_lr=not args.no_flip_lr
+        flip_ud=args.flip_ud,
+        flip_lr=args.flip_lr
     )
     
     out_size = (int(args.width), int(args.height))
@@ -442,6 +443,13 @@ def main() -> int:
                 elif k == ord("h"):
                     params.flip_lr = not params.flip_lr
                     tts_queue.put(f"Flip left right {'ON' if params.flip_lr else 'OFF'}")
+                elif k == ord("r"):
+                    params.invert = True
+                    params.auto_range = True
+                    params.flip_ud = args.flip_ud
+                    params.flip_lr = args.flip_lr
+                    state.clear()
+                    tts_queue.put("Resetting parameters to defaults")
 
     finally:
         if 'tts_queue' in locals():

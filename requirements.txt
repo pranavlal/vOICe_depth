@@ -1,8 +1,8 @@
-torch
-torchvision
-opencv-python
-numpy
-pyvirtualcam
-depthai
-timm
-pywin32; sys_platform == 'win32'
+torch>=2.0.0
+torchvision>=0.15.0
+opencv-python>=4.8.0.0
+numpy>=1.24.0
+pyvirtualcam>=0.11.0
+depthai>=2.24.0.0
+timm>=0.9.0
+pywin32>=306; sys_platform == 'win32'

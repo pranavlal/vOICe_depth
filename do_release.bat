@@ -1,9 +1,9 @@
 @echo off
 echo Starting release process...
 git add .
-git commit -m "Update for release 0.1"
+git commit -m "Update for release 1.2"
 git push
-git tag 0.1
-git push origin 0.1
-"C:\Program Files\GitHub CLI\gh.exe" release create 0.1 --title "Release 0.1" --notes "Initial 0.1 release" vOICe_depth_v0.1.zip
+git tag 1.2
+git push origin 1.2
+"C:\Program Files\GitHub CLI\gh.exe" release create 1.2 --title "Release 1.2" --notes "vOICe Depth Release 1.2" vOICe_depth_v1.2.zip
 echo Release process complete.

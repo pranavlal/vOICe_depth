@@ -24,26 +24,26 @@ with open("git_release_log.txt", "w", encoding="utf-8") as f:
     run_cmd(["git", "add", "."])
     
     # Commit files
-    run_cmd(["git", "commit", "-m", "Prepare release 0.1"])
+    run_cmd(["git", "commit", "-m", "Prepare release 1.2"])
     
     # Push to main branch
     run_cmd(["git", "push"])
     
     # Create tag
-    run_cmd(["git", "tag", "0.1"])
+    run_cmd(["git", "tag", "1.2"])
     
     # Push tag
-    run_cmd(["git", "push", "origin", "0.1"])
+    run_cmd(["git", "push", "origin", "1.2"])
     
-    # Check if gh release 0.1 already exists
-    exit_code = run_cmd([r"C:\Program Files\GitHub CLI\gh.exe", "release", "view", "0.1"])
+    # Check if gh release 1.2 already exists
+    exit_code = run_cmd([r"C:\Program Files\GitHub CLI\gh.exe", "release", "view", "1.2"])
     if exit_code != 0:
         # Create GitHub release and upload the zip file as asset
         run_cmd([
-            r"C:\Program Files\GitHub CLI\gh.exe", "release", "create", "0.1",
-            "--title", "Release 0.1",
-            "--notes", "Initial 0.1 release",
-            "vOICe_depth_v0.1.zip"
+            r"C:\Program Files\GitHub CLI\gh.exe", "release", "create", "1.2",
+            "--title", "Release 1.2",
+            "--notes", "Release 1.2 with code review fixes and updated README.",
+            "vOICe_depth_v1.2.zip"
         ])
     else:
-        print("Release 0.1 already exists on GitHub.")
+        print("Release 1.2 already exists on GitHub.")
