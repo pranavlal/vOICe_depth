@@ -56,21 +56,24 @@ class MjpegServer(port: Int) : NanoHTTPD(port) {
         }
 
         override fun read(b: ByteArray, off: Int, len: Int): Int {
-            if (currentBuffer == null || bufferPos >= currentBuffer!!.size) {
+            if (len == 0) return 0
+            
+            while (currentBuffer == null || bufferPos >= currentBuffer!!.size) {
                 val frame = synchronized(frameLock) { currentFrame }
                 
                 if (frame == null) {
-                    // Wait for a frame if none available
-                    try { Thread.sleep(30) } catch (e: Exception) {}
-                    return 0
+                    // Block until a frame is available
+                    try { Thread.sleep(100) } catch (e: InterruptedException) { 
+                        return -1 // Interrupted, close stream
+                    }
+                    continue
                 }
                 
                 val frameSize = frame.size
-                // Standard MJPEG headers usually use \r\n
+                // Standard MJPEG headers
                 val header = ("--frame_boundary\r\n" +
                              "Content-Type: image/jpeg\r\n" +
-                             "Content-Length: $frameSize\r\n" +
-                             "X-Timestamp: ${System.currentTimeMillis()}\r\n\r\n").toByteArray()
+                             "Content-Length: $frameSize\r\n\r\n").toByteArray()
                 val footer = "\r\n".toByteArray()
                 
                 val fullFrame = ByteArray(header.size + frameSize + footer.size)
