@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
+import android.graphics.Matrix
 import android.graphics.Rect
 import android.graphics.YuvImage
 import android.hardware.camera2.CameraAccessException
@@ -148,9 +149,10 @@ class MainActivity : AppCompatActivity() {
                 // For this implementation, we ensure depthEngine is initialized and preferred.
                 val depthBitmap = depthEngine?.processFrame(bitmap)
                 if (depthBitmap != null) {
-                    mjpegServer?.setFrame(depthBitmap)
+                    val rotatedBitmap = rotateBitmap(depthBitmap, getCameraSensorOrientation())
+                    mjpegServer?.setFrame(rotatedBitmap)
                     runOnUiThread {
-                        depthImageView.setImageBitmap(depthBitmap)
+                        depthImageView.setImageBitmap(rotatedBitmap)
                     }
                 }
             }
@@ -233,6 +235,32 @@ class MainActivity : AppCompatActivity() {
             ex.printStackTrace()
         }
         return "127.0.0.1"
+    }
+
+    private fun getCameraSensorOrientation(): Int {
+        val manager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        val cameraId = manager.cameraIdList[0]
+        val characteristics = manager.getCameraCharacteristics(cameraId)
+        val sensorOrientation = characteristics.get(android.hardware.camera2.CameraCharacteristics.SENSOR_ORIENTATION) ?: 0
+        
+        val rotation = windowManager.defaultDisplay.rotation
+        val degrees = when (rotation) {
+            Surface.ROTATION_0 -> 0
+            Surface.ROTATION_90 -> 90
+            Surface.ROTATION_180 -> 180
+            Surface.ROTATION_270 -> 270
+            else -> 0
+        }
+        
+        // For back camera, sensor orientation is added
+        return (sensorOrientation - degrees + 360) % 360
+    }
+
+    private fun rotateBitmap(bitmap: Bitmap, degrees: Int): Bitmap {
+        if (degrees == 0) return bitmap
+        val matrix = Matrix()
+        matrix.postRotate(degrees.toFloat())
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
 
     override fun onDestroy() {
