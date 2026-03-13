@@ -1,0 +1,6 @@
+﻿d67f19b Update for release 0.1
+4e02836 Prepare release 0.1
+12dd552 Updated the  read  me file with explanations and a transparancy statement.
+039c160 docs: elaborate hotkeys and update download connection in README
+a8feb15 Clean up unnecessary files from repo
+41296e4 Initial commit from agent

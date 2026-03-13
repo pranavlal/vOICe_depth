@@ -22,19 +22,24 @@ import android.os.HandlerThread
 import android.view.Surface
 import android.view.View
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import java.io.ByteArrayOutputStream
+import java.net.Inet4Address
 import java.net.InetAddress
+import java.net.NetworkInterface
+import java.util.Collections
 import java.util.Formatter
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var statusTextView: TextView
     private lateinit var urlTextView: TextView
+    private lateinit var depthImageView: ImageView
     private lateinit var startButton: Button
     private lateinit var stopButton: Button
 
@@ -52,6 +57,7 @@ class MainActivity : AppCompatActivity() {
 
         statusTextView = findViewById(R.id.statusTextView)
         urlTextView = findViewById(R.id.urlTextView)
+        depthImageView = findViewById(R.id.depthImageView)
         startButton = findViewById(R.id.startButton)
         stopButton = findViewById(R.id.stopButton)
 
@@ -75,12 +81,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val ip = getLocalIpAddress()
-        if (ip == null) {
-            Toast.makeText(this, "No network connection", Toast.LENGTH_SHORT).show()
-            return
-        }
-
+        val ip = getLocalIpAddress() ?: "127.0.0.1"
         val port = 8080
         val url = "http://$ip:$port/depth_stream.mjpeg"
         
@@ -148,6 +149,9 @@ class MainActivity : AppCompatActivity() {
                 val depthBitmap = depthEngine?.processFrame(bitmap)
                 if (depthBitmap != null) {
                     mjpegServer?.setFrame(depthBitmap)
+                    runOnUiThread {
+                        depthImageView.setImageBitmap(depthBitmap)
+                    }
                 }
             }
         }, cameraHandler)
@@ -213,18 +217,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getLocalIpAddress(): String? {
-        val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        val wifiInfo = wifiManager.connectionInfo
-        val ipAddress = wifiInfo.ipAddress
-        return if (ipAddress == 0) null else {
-            val bytes = byteArrayOf(
-                (ipAddress and 0xFF).toByte(),
-                (ipAddress shr 8 and 0xFF).toByte(),
-                (ipAddress shr 16 and 0xFF).toByte(),
-                (ipAddress shr 24 and 0xFF).toByte()
-            )
-            InetAddress.getByAddress(bytes).hostAddress
+        // Preference: always try to find a non-loopback IP first for display, 
+        // but the server will be accessible via localhost anyway.
+        try {
+            val interfaces = Collections.list(NetworkInterface.getNetworkInterfaces())
+            for (intf in interfaces) {
+                val addrs = Collections.list(intf.inetAddresses)
+                for (addr in addrs) {
+                    if (!addr.isLoopbackAddress && addr is Inet4Address) {
+                        return addr.hostAddress
+                    }
+                }
+            }
+        } catch (ex: Exception) {
+            ex.printStackTrace()
         }
+        return "127.0.0.1"
     }
 
     override fun onDestroy() {

@@ -19,14 +19,21 @@ class MjpegServer(port: Int) : NanoHTTPD(port) {
     }
 
     private var connectionCount = 0
+    private val MAX_CONNECTIONS = 5
 
     override fun serve(session: IHTTPSession): Response {
         val uri = session.uri
+        android.util.Log.d("MjpegServer", "Request: ${session.method} $uri from ${session.remoteIpAddress}")
+        
         return if (uri == "/depth_stream.mjpeg") {
-            if (connectionCount > 0) {
-                return newFixedLengthResponse(Response.Status.FORBIDDEN, MIME_PLAINTEXT, "Maximum connections reached")
+            synchronized(this) {
+                if (connectionCount >= MAX_CONNECTIONS) {
+                    android.util.Log.w("MjpegServer", "Rejecting connection: MAX_CONNECTIONS reached ($MAX_CONNECTIONS)")
+                    return newFixedLengthResponse(Response.Status.FORBIDDEN, MIME_PLAINTEXT, "Maximum connections reached")
+                }
+                connectionCount++
             }
-            connectionCount++
+            android.util.Log.i("MjpegServer", "New MJPEG connection. Total: $connectionCount")
             createMjpegResponse()
         } else {
             newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Not Found")
@@ -50,10 +57,20 @@ class MjpegServer(port: Int) : NanoHTTPD(port) {
 
         override fun read(b: ByteArray, off: Int, len: Int): Int {
             if (currentBuffer == null || bufferPos >= currentBuffer!!.size) {
-                val frame = synchronized(frameLock) { currentFrame } ?: return 0
+                val frame = synchronized(frameLock) { currentFrame }
+                
+                if (frame == null) {
+                    // Wait for a frame if none available
+                    try { Thread.sleep(30) } catch (e: Exception) {}
+                    return 0
+                }
                 
                 val frameSize = frame.size
-                val header = "--frame_boundary\r\nContent-Type: image/jpeg\r\nContent-Length: $frameSize\r\n\r\n".toByteArray()
+                // Standard MJPEG headers usually use \r\n
+                val header = ("--frame_boundary\r\n" +
+                             "Content-Type: image/jpeg\r\n" +
+                             "Content-Length: $frameSize\r\n" +
+                             "X-Timestamp: ${System.currentTimeMillis()}\r\n\r\n").toByteArray()
                 val footer = "\r\n".toByteArray()
                 
                 val fullFrame = ByteArray(header.size + frameSize + footer.size)
