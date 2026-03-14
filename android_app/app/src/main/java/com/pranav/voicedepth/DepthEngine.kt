@@ -64,6 +64,7 @@ class DepthEngine(private val context: Context) {
             }
             tfliteInterpreter = Interpreter(model, options)
         } catch (e: Exception) {
+            android.util.Log.e("DepthEngine", "Failed to initialize TFLite MidAS model", e)
             e.printStackTrace()
         }
     }
@@ -83,7 +84,11 @@ class DepthEngine(private val context: Context) {
     }
 
     private fun processAiDepth(bitmap: Bitmap): Bitmap {
-        val interpreter = tfliteInterpreter ?: return bitmap
+        val interpreter = tfliteInterpreter
+        if (interpreter == null) {
+            // Return a black frame if TFLite fails to avoid confusing the user with a raw RGB feed
+            return createErrorBitmap(bitmap.width, bitmap.height)
+        }
 
         // Pre-process image
         val imageProcessor = ImageProcessor.Builder()
@@ -126,6 +131,15 @@ class DepthEngine(private val context: Context) {
         }
         
         cachedCanvas?.drawBitmap(depthBitmap, null, scaledDestRect, null)
+        return cachedOutputBitmap!!
+    }
+
+    private fun createErrorBitmap(width: Int, height: Int): Bitmap {
+        if (cachedOutputBitmap == null || cachedOutputBitmap!!.width != width || cachedOutputBitmap!!.height != height) {
+            cachedOutputBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            cachedCanvas = Canvas(cachedOutputBitmap!!)
+        }
+        cachedCanvas?.drawColor(Color.BLACK)
         return cachedOutputBitmap!!
     }
 

@@ -165,9 +165,9 @@ class DepthStreamService : Service() {
                     val degrees = sensorOrientation
                     val rotatedBitmap = rotateBitmap(depthBitmap, degrees)
                     
-                    mjpegServer?.setFrame(rotatedBitmap)
+                    mjpegServer?.setFrame(depthBitmap) // Send un-rotated raw sensor image to The vOICe
                     
-                    // Send to UI if bound
+                    // Send upright rotated image to local UI preview if bound
                     frameCallback?.invoke(rotatedBitmap)
                 }
             }
