@@ -5,9 +5,9 @@ import fi.iki.elonen.NanoHTTPD
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 
-class MjpegServer(port: Int) : NanoHTTPD(port) {
+class MjpegServer(port: Int) : NanoHTTPD("127.0.0.1", port) {
 
-    private val frameLock = Any()
+    private val frameLock = Object()
     private var currentFrame: ByteArray? = null
 
     fun setFrame(bitmap: Bitmap) {
@@ -15,6 +15,7 @@ class MjpegServer(port: Int) : NanoHTTPD(port) {
         bitmap.compress(Bitmap.CompressFormat.JPEG, 80, stream)
         synchronized(frameLock) {
             currentFrame = stream.toByteArray()
+            frameLock.notifyAll()
         }
     }
 
@@ -59,15 +60,19 @@ class MjpegServer(port: Int) : NanoHTTPD(port) {
             if (len == 0) return 0
             
             while (currentBuffer == null || bufferPos >= currentBuffer!!.size) {
-                val frame = synchronized(frameLock) { currentFrame }
-                
-                if (frame == null) {
-                    // Block until a frame is available
-                    try { Thread.sleep(100) } catch (e: InterruptedException) { 
-                        return -1 // Interrupted, close stream
+                val frame: ByteArray?
+                synchronized(frameLock) {
+                    if (currentFrame == null) {
+                        try { 
+                            frameLock.wait() 
+                        } catch (e: InterruptedException) { 
+                            return -1 // Interrupted, close stream
+                        }
                     }
-                    continue
+                    frame = currentFrame
                 }
+                
+                if (frame == null) continue // Should not happen given the wait structure, but safe check
                 
                 val frameSize = frame.size
                 // Standard MJPEG headers

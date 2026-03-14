@@ -68,6 +68,11 @@ class DepthEngine(private val context: Context) {
         }
     }
 
+    // Caches for scaling to avoid GC churn
+    private var cachedOutputBitmap: Bitmap? = null
+    private var cachedCanvas: Canvas? = null
+    private val scaledDestRect = Rect()
+
     fun processFrame(bitmap: Bitmap): Bitmap {
         return if (isArSupported) {
             // Simplified: In a real app, we'd use ARCore's depth map from the acquired frame
@@ -113,7 +118,15 @@ class DepthEngine(private val context: Context) {
         }
         
         depthBitmap.setPixels(pixels, 0, inputSize, 0, 0, inputSize, inputSize)
-        return Bitmap.createScaledBitmap(depthBitmap, bitmap.width, bitmap.height, true)
+        
+        if (cachedOutputBitmap == null || cachedOutputBitmap!!.width != bitmap.width || cachedOutputBitmap!!.height != bitmap.height) {
+            cachedOutputBitmap = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+            cachedCanvas = Canvas(cachedOutputBitmap!!)
+            scaledDestRect.set(0, 0, bitmap.width, bitmap.height)
+        }
+        
+        cachedCanvas?.drawBitmap(depthBitmap, null, scaledDestRect, null)
+        return cachedOutputBitmap!!
     }
 
     fun stop() {

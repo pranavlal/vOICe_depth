@@ -45,6 +45,10 @@ class DepthStreamService : Service() {
     private var frameCallback: ((Bitmap) -> Unit)? = null
     private var sensorOrientation = 0
     private var displayRotation = 0
+    
+    // Performance: Reusable objects to prevent GC thrashing
+    private val jpegOutputStream = ByteArrayOutputStream()
+    private val rotationMatrix = Matrix()
 
     inner class LocalBinder : Binder() {
         fun getService(): DepthStreamService = this@DepthStreamService
@@ -208,17 +212,17 @@ class DepthStreamService : Service() {
         uBuffer.get(nv21, ySize + vSize, uSize)
 
         val yuvImage = YuvImage(nv21, ImageFormat.NV21, image.width, image.height, null)
-        val out = ByteArrayOutputStream()
-        yuvImage.compressToJpeg(Rect(0, 0, image.width, image.height), 90, out)
-        val imageBytes = out.toByteArray()
+        jpegOutputStream.reset()
+        yuvImage.compressToJpeg(Rect(0, 0, image.width, image.height), 90, jpegOutputStream)
+        val imageBytes = jpegOutputStream.toByteArray()
         return BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
     }
     
     private fun rotateBitmap(bitmap: Bitmap, degrees: Int): Bitmap {
         if (degrees == 0) return bitmap
-        val matrix = Matrix()
-        matrix.postRotate(degrees.toFloat())
-        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        rotationMatrix.reset()
+        rotationMatrix.postRotate(degrees.toFloat())
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, rotationMatrix, true)
     }
 
     override fun onDestroy() {
