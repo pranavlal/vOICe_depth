@@ -44,7 +44,6 @@ class DepthStreamService : Service() {
     
     private var frameCallback: ((Bitmap) -> Unit)? = null
     private var sensorOrientation = 0
-    private var displayRotation = 0
     
     // Performance: Reusable objects to prevent GC thrashing
     private val jpegOutputStream = ByteArrayOutputStream()
@@ -60,10 +59,6 @@ class DepthStreamService : Service() {
 
     fun setFrameCallback(callback: ((Bitmap) -> Unit)?) {
         frameCallback = callback
-    }
-    
-    fun setDisplayRotation(rotationDegrees: Int) {
-        displayRotation = rotationDegrees
     }
 
     override fun onCreate() {
@@ -167,7 +162,7 @@ class DepthStreamService : Service() {
             if (bitmap != null) {
                 val depthBitmap = depthEngine?.processFrame(bitmap)
                 if (depthBitmap != null) {
-                    val degrees = (sensorOrientation - displayRotation + 360) % 360
+                    val degrees = sensorOrientation
                     val rotatedBitmap = rotateBitmap(depthBitmap, degrees)
                     
                     mjpegServer?.setFrame(rotatedBitmap)

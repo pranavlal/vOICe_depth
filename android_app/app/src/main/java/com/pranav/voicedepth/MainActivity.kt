@@ -40,8 +40,7 @@ class MainActivity : AppCompatActivity() {
             streamService = binder.getService()
             isBound = true
 
-            // Send initial rotation and set up callback
-            streamService?.setDisplayRotation(getDisplayRotationDegrees())
+            // Send initial callback setup
             streamService?.setFrameCallback { bitmap ->
                 runOnUiThread {
                     depthImageView.setImageBitmap(bitmap)
@@ -116,38 +115,32 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopServer() {
+        unbindFromService()
+        
+        val intent = Intent(this, DepthStreamService::class.java)
+        stopService(intent)
+
+        statusTextView.setText(R.string.server_stopped)
+        urlTextView.text = ""
+        startButton.isEnabled = true
+        stopButton.isEnabled = false
+    }
+
+    private fun unbindFromService() {
         if (isBound) {
             streamService?.setFrameCallback(null)
             unbindService(serviceConnection)
             isBound = false
             streamService = null
         }
-        
-        val intent = Intent(this, DepthStreamService::class.java)
-        stopService(intent)
-
-        statusTextView.setText(R.string.server_stopped)
-        startButton.isEnabled = true
-        stopButton.isEnabled = false
     }
 
     private fun getLocalIpAddress(): String? {
         return "127.0.0.1"
     }
 
-    private fun getDisplayRotationDegrees(): Int {
-        val rotation = windowManager.defaultDisplay.rotation
-        return when (rotation) {
-            Surface.ROTATION_0 -> 0
-            Surface.ROTATION_90 -> 90
-            Surface.ROTATION_180 -> 180
-            Surface.ROTATION_270 -> 270
-            else -> 0
-        }
-    }
-
     override fun onDestroy() {
         super.onDestroy()
-        stopServer()
+        unbindFromService()
     }
 }
