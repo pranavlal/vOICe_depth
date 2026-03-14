@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:2:1-30:12
-INJECTED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:2:1-30:12
-INJECTED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:2:1-30:12
-INJECTED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:2:1-30:12
+ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:2:1-39:12
+INJECTED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:2:1-39:12
+INJECTED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:2:1-39:12
+INJECTED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:2:1-39:12
 MERGED from [com.google.android.material:material:1.11.0] /home/pranav/.gradle/caches/transforms-4/38b13d6f0747947d7fc1d9cbbd720a83/transformed/material-1.11.0/AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] /home/pranav/.gradle/caches/transforms-4/e3b0ba381146e34cd6b9270a260205df/transformed/constraintlayout-2.1.4/AndroidManifest.xml:2:1-11:12
 MERGED from [androidx.appcompat:appcompat-resources:1.6.1] /home/pranav/.gradle/caches/transforms-4/10db8dc3f2584624f375a5547ee9845e/transformed/jetified-appcompat-resources-1.6.1/AndroidManifest.xml:17:1-22:12
@@ -76,23 +76,35 @@ uses-permission#android.permission.ACCESS_WIFI_STATE
 ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:7:5-76
 	android:name
 		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:7:22-73
+uses-permission#android.permission.FOREGROUND_SERVICE
+ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:8:5-77
+	android:name
+		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:8:22-74
+uses-permission#android.permission.FOREGROUND_SERVICE_CAMERA
+ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:9:5-84
+	android:name
+		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:9:22-81
+uses-permission#android.permission.POST_NOTIFICATIONS
+ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:10:5-77
+	android:name
+		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:10:22-74
 uses-feature#android.hardware.camera
-ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:9:5-60
+ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:12:5-60
 	android:name
-		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:9:19-57
+		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:12:19-57
 uses-feature#android.hardware.camera.autofocus
-ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:10:5-70
+ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:13:5-70
 	android:name
-		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:10:19-67
+		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:13:19-67
 uses-feature#android.software.depth_static
-ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:11:5-91
+ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:14:5-91
 	android:required
-		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:11:64-88
+		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:14:64-88
 	android:name
-		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:11:19-63
+		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:14:19-63
 application
-ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:13:5-28:19
-INJECTED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:13:5-28:19
+ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:16:5-37:19
+INJECTED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:16:5-37:19
 MERGED from [com.google.android.material:material:1.11.0] /home/pranav/.gradle/caches/transforms-4/38b13d6f0747947d7fc1d9cbbd720a83/transformed/material-1.11.0/AndroidManifest.xml:22:5-20
 MERGED from [com.google.android.material:material:1.11.0] /home/pranav/.gradle/caches/transforms-4/38b13d6f0747947d7fc1d9cbbd720a83/transformed/material-1.11.0/AndroidManifest.xml:22:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] /home/pranav/.gradle/caches/transforms-4/e3b0ba381146e34cd6b9270a260205df/transformed/constraintlayout-2.1.4/AndroidManifest.xml:9:5-20
@@ -124,33 +136,43 @@ MERGED from [com.google.android.odml:image:1.0.0-beta1] /home/pranav/.gradle/cac
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.12.0] /home/pranav/.gradle/caches/transforms-4/2c43d96cc1a7d0cf45e363a20a1bd276/transformed/core-1.12.0/AndroidManifest.xml:28:18-86
 	android:supportsRtl
-		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:18:9-35
+		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:21:9-35
 	android:label
-		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:16:9-41
+		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:19:9-41
 	android:roundIcon
-		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:17:9-54
+		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:20:9-54
 	android:icon
-		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:15:9-43
+		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:18:9-43
 	android:allowBackup
-		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:14:9-35
+		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:17:9-35
 	android:theme
-		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:19:9-48
+		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:22:9-48
 activity#com.pranav.voicedepth.MainActivity
-ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:20:9-27:20
+ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:23:9-30:20
 	android:exported
-		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:22:13-36
+		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:25:13-36
 	android:name
-		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:21:13-41
+		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:24:13-41
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:23:13-26:29
+ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:26:13-29:29
 action#android.intent.action.MAIN
-ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:24:17-69
+ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:27:17-69
 	android:name
-		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:24:25-66
+		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:27:25-66
 category#android.intent.category.LAUNCHER
-ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:25:17-77
+ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:28:17-77
 	android:name
-		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:25:27-74
+		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:28:27-74
+service#com.pranav.voicedepth.DepthStreamService
+ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:32:9-36:54
+	android:enabled
+		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:34:13-35
+	android:exported
+		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:35:13-37
+	android:foregroundServiceType
+		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:36:13-51
+	android:name
+		ADDED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml:33:13-47
 uses-sdk
 INJECTED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from /home/pranav/vOICe_depth/android_app/app/src/main/AndroidManifest.xml
