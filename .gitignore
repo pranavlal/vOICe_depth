@@ -13,3 +13,7 @@ run_git_cmds.py
 test_git.py
 git_test_output.txt
 git_setup_log.txt
+
+# Android build artifacts
+android_app/app/build/
+*.apk

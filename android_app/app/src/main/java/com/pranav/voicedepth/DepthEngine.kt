@@ -56,15 +56,29 @@ class DepthEngine(private val context: Context) {
         try {
             val model = FileUtil.loadMappedFile(context, "midas_small.tflite")
             val options = Interpreter.Options()
+            
             try {
+                // Attempt GPU initialization first
                 gpuDelegate = GpuDelegate()
                 options.addDelegate(gpuDelegate)
+                tfliteInterpreter = Interpreter(model, options)
+                android.util.Log.i("DepthEngine", "Successfully initialized TFLite on GPU")
             } catch (e: Exception) {
-                // Fallback to CPU if GPU not available
+                // GPU initialization failed (very common on budget devices or unsupported drivers)
+                android.util.Log.w("DepthEngine", "GPU initialization failed, falling back to CPU", e)
+                
+                // Clean up any partially initialized delegate
+                gpuDelegate?.close()
+                gpuDelegate = null
+                
+                // Retry strict CPU initialization
+                val cpuOptions = Interpreter.Options()
+                cpuOptions.setNumThreads(4) // Use 4 CPU cores for better performance
+                tfliteInterpreter = Interpreter(model, cpuOptions)
+                android.util.Log.i("DepthEngine", "Successfully initialized TFLite on CPU")
             }
-            tfliteInterpreter = Interpreter(model, options)
         } catch (e: Exception) {
-            android.util.Log.e("DepthEngine", "Failed to initialize TFLite MidAS model", e)
+            android.util.Log.e("DepthEngine", "CRITICAL: Failed to load or initialize TFLite model completely", e)
             e.printStackTrace()
         }
     }
