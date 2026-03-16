@@ -33,6 +33,11 @@ class DepthEngine(private val context: Context) {
     private val outputArray = FloatArray(inputSize * inputSize)
     private val pixels = IntArray(inputSize * inputSize)
     private var depthBitmap = Bitmap.createBitmap(inputSize, inputSize, Bitmap.Config.ARGB_8888)
+    
+    // EMA Smoothing State
+    private var smoothedMin: Float? = null
+    private var smoothedMax: Float? = null
+    private val EMA_ALPHA = 0.1f // 10% new frame, 90% history
 
     init {
         try {
@@ -120,19 +125,28 @@ class DepthEngine(private val context: Context) {
         // Post-process output
         outputBuffer.rewind()
         
-        var min = Float.MAX_VALUE
-        var max = Float.MIN_VALUE
+        var frameMin = Float.MAX_VALUE
+        var frameMax = Float.MIN_VALUE
         
         for (i in 0 until inputSize * inputSize) {
             val depth = outputBuffer.float
             outputArray[i] = depth
-            if (depth < min) min = depth
-            if (depth > max) max = depth
+            if (depth < frameMin) frameMin = depth
+            if (depth > frameMax) frameMax = depth
         }
 
-        val range = max - min
+        // Apply Exponential Moving Average (EMA) to smooth out jumping bounds
+        smoothedMin = if (smoothedMin == null) frameMin else (EMA_ALPHA * frameMin) + ((1 - EMA_ALPHA) * smoothedMin!!)
+        smoothedMax = if (smoothedMax == null) frameMax else (EMA_ALPHA * frameMax) + ((1 - EMA_ALPHA) * smoothedMax!!)
+
+        val range = smoothedMax!! - smoothedMin!!
         for (i in 0 until inputSize * inputSize) {
-            val normalized = if (range > 0) ((outputArray[i] - min) / range * 255).toInt() else 0
+            // Clamp normalized value between 0 and 255 to prevent overflow from smooth lag
+            var normalizedFloat = if (range > 0) ((outputArray[i] - smoothedMin!!) / range * 255) else 0f
+            if (normalizedFloat < 0f) normalizedFloat = 0f
+            if (normalizedFloat > 255f) normalizedFloat = 255f
+            
+            val normalized = normalizedFloat.toInt()
             pixels[i] = Color.rgb(normalized, normalized, normalized)
         }
         
