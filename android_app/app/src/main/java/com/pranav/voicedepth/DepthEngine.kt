@@ -5,9 +5,6 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Rect
-import com.google.ar.core.Config
-import com.google.ar.core.Session
-import com.google.ar.core.exceptions.UnavailableException
 import org.tensorflow.lite.Interpreter
 import org.tensorflow.lite.gpu.GpuDelegate
 import org.tensorflow.lite.support.common.FileUtil
@@ -19,10 +16,8 @@ import java.nio.ByteOrder
 
 class DepthEngine(private val context: Context) {
 
-    private var arSession: Session? = null
     private var tfliteInterpreter: Interpreter? = null
     private var gpuDelegate: GpuDelegate? = null
-    private var isArSupported = false
     
     // Performance: Pre-allocated buffers
     private val inputSize = 256
@@ -44,27 +39,7 @@ class DepthEngine(private val context: Context) {
     private val EMA_ALPHA = 0.1f // 10% new frame, 90% history
 
     init {
-        try {
-            arSession = Session(context)
-            val config = Config(arSession)
-            if (arSession!!.isDepthModeSupported(Config.DepthMode.AUTOMATIC)) {
-                config.depthMode = Config.DepthMode.AUTOMATIC
-                isArSupported = true
-                arSession!!.configure(config)
-            } else {
-                // Depth not supported — close the session to free native resources
-                arSession!!.close()
-                arSession = null
-            }
-        } catch (e: Exception) {
-            arSession?.close()
-            arSession = null
-            isArSupported = false
-        }
-
-        if (!isArSupported) {
-            setupTflite()
-        }
+        setupTflite()
     }
 
     private fun setupTflite() {
@@ -105,12 +80,7 @@ class DepthEngine(private val context: Context) {
     private val scaledDestRect = Rect()
 
     fun processFrame(bitmap: Bitmap): Bitmap {
-        return if (isArSupported) {
-            // Simplified: In a real app, we'd use ARCore's depth map from the acquired frame
-            processAiDepth(bitmap)
-        } else {
-            processAiDepth(bitmap)
-        }
+        return processAiDepth(bitmap)
     }
 
     private fun processAiDepth(bitmap: Bitmap): Bitmap {
@@ -179,7 +149,6 @@ class DepthEngine(private val context: Context) {
     }
 
     fun stop() {
-        arSession?.close()
         tfliteInterpreter?.close()
         gpuDelegate?.close()
     }
