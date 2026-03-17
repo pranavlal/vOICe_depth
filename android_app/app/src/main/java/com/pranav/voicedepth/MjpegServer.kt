@@ -9,12 +9,21 @@ class MjpegServer(port: Int) : NanoHTTPD("127.0.0.1", port) {
     private val frameLock = Object()
     private var currentFrame: ByteArray? = null
     private val compressStream = ByteArrayOutputStream()
+    @Volatile private var isRunning = true
 
     fun setFrame(bitmap: Bitmap) {
         compressStream.reset()
         bitmap.compress(Bitmap.CompressFormat.JPEG, 80, compressStream)
         synchronized(frameLock) {
             currentFrame = compressStream.toByteArray()
+            frameLock.notifyAll()
+        }
+    }
+
+    /** Signal all waiting streams to close gracefully */
+    fun notifyShutdown() {
+        isRunning = false
+        synchronized(frameLock) {
             frameLock.notifyAll()
         }
     }
@@ -61,11 +70,14 @@ class MjpegServer(port: Int) : NanoHTTPD("127.0.0.1", port) {
             if (len == 0) return 0
             
             while (currentBuffer == null || bufferPos >= currentBuffer!!.size) {
+                if (!isRunning) return -1 // Server shutting down
+                
                 val frame: ByteArray?
                 synchronized(frameLock) {
                     while (currentFrame == null || currentFrame === lastSentFrame) {
+                        if (!isRunning) return -1
                         try { 
-                            frameLock.wait() 
+                            frameLock.wait(5000) // 5s timeout to check isRunning periodically
                         } catch (e: InterruptedException) { 
                             return -1 // Interrupted, close stream
                         }
@@ -74,10 +86,9 @@ class MjpegServer(port: Int) : NanoHTTPD("127.0.0.1", port) {
                     lastSentFrame = currentFrame
                 }
                 
-                if (frame == null) continue // Should not happen given the wait structure, but safe check
+                if (frame == null) continue
                 
                 val frameSize = frame.size
-                // Standard MJPEG headers
                 val header = ("--frame_boundary\r\n" +
                              "Content-Type: image/jpeg\r\n" +
                              "Content-Length: $frameSize\r\n\r\n").toByteArray()

@@ -11,6 +11,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import android.view.accessibility.AccessibilityEvent
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
@@ -36,10 +37,17 @@ class MainActivity : AppCompatActivity() {
             streamService = binder.getService()
             isBound = true
 
-            // Send initial callback setup
+            // Wire up frame preview callback
             streamService?.setFrameCallback { bitmap ->
                 runOnUiThread {
                     depthImageView.setImageBitmap(bitmap)
+                }
+            }
+
+            // Wire up error callback to show errors in the UI
+            streamService?.setErrorCallback { errorMessage ->
+                runOnUiThread {
+                    showError(errorMessage)
                 }
             }
         }
@@ -73,7 +81,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
         
-        // Initial setup for URL
+        // Initial setup
+        depthImageView.contentDescription = getString(R.string.depth_preview_idle)
         val ip = getLocalIpAddress() ?: "127.0.0.1"
         val port = 8080
         urlTextView.text = "http://$ip:$port/depth_stream.mjpeg"
@@ -105,9 +114,14 @@ class MainActivity : AppCompatActivity() {
         
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
 
+        val url = urlTextView.text.toString()
         statusTextView.setText(R.string.server_running)
+        depthImageView.contentDescription = getString(R.string.depth_preview_active)
         startButton.isEnabled = false
         stopButton.isEnabled = true
+
+        // Accessibility: announce server started
+        announceForAccessibility(getString(R.string.server_started_announcement, url))
     }
 
     private fun stopServer() {
@@ -118,13 +132,37 @@ class MainActivity : AppCompatActivity() {
 
         statusTextView.setText(R.string.server_stopped)
         urlTextView.text = ""
+        depthImageView.contentDescription = getString(R.string.depth_preview_idle)
+        depthImageView.setImageDrawable(null)
         startButton.isEnabled = true
         stopButton.isEnabled = false
+
+        // Accessibility: announce server stopped
+        announceForAccessibility(getString(R.string.server_stopped_announcement))
+    }
+
+    private fun showError(message: String) {
+        statusTextView.text = message
+        depthImageView.contentDescription = getString(R.string.depth_preview_error, message)
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+
+        // Reset buttons so user can retry
+        startButton.isEnabled = true
+        stopButton.isEnabled = false
+
+        // Accessibility: announce the error
+        announceForAccessibility(message)
+    }
+
+    /** Send an accessibility announcement so screen readers speak the message */
+    private fun announceForAccessibility(message: String) {
+        statusTextView.announceForAccessibility(message)
     }
 
     private fun unbindFromService() {
         if (isBound) {
             streamService?.setFrameCallback(null)
+            streamService?.setErrorCallback(null)
             unbindService(serviceConnection)
             isBound = false
             streamService = null
@@ -140,7 +178,7 @@ class MainActivity : AppCompatActivity() {
         if (requestCode == 101 && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
             startServer()
         } else {
-            Toast.makeText(this, "Permissions required to start server", Toast.LENGTH_SHORT).show()
+            showError(getString(R.string.error_permissions_required))
         }
     }
 

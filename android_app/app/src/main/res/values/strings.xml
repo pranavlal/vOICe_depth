@@ -5,4 +5,18 @@
     <string name="server_running">Server Running at:</string>
     <string name="server_stopped">Server Stopped</string>
     <string name="copy_to_clipboard">URL copied to clipboard</string>
+
+    <!-- Error messages -->
+    <string name="error_model_load_failed">Depth model failed to load. Please reinstall the app.</string>
+    <string name="error_camera_failed">Camera failed to open. Please check permissions and close other camera apps.</string>
+    <string name="error_camera_session_failed">Camera session could not be configured.</string>
+    <string name="error_port_in_use">Port 8080 is already in use. Please close other server apps and try again.</string>
+    <string name="error_permissions_required">Camera permission is required to generate depth maps.</string>
+
+    <!-- Accessibility -->
+    <string name="depth_preview_idle">Depth map preview. Server is stopped.</string>
+    <string name="depth_preview_active">Depth map preview. Streaming depth data to The vOICe.</string>
+    <string name="depth_preview_error">Depth map preview. An error occurred: %1$s</string>
+    <string name="server_started_announcement">Depth server started. Streaming at %1$s</string>
+    <string name="server_stopped_announcement">Depth server stopped.</string>
 </resources>

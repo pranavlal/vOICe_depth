@@ -43,6 +43,7 @@ class DepthStreamService : Service() {
     private var imageReader: ImageReader? = null
     
     private var frameCallback: ((Bitmap) -> Unit)? = null
+    private var errorCallback: ((String) -> Unit)? = null
     private var sensorOrientation = 0
     
     // Performance: Reusable objects to prevent GC thrashing
@@ -61,9 +62,18 @@ class DepthStreamService : Service() {
         frameCallback = callback
     }
 
+    fun setErrorCallback(callback: ((String) -> Unit)?) {
+        errorCallback = callback
+    }
+
     override fun onCreate() {
         super.onCreate()
         depthEngine = DepthEngine(this)
+        if (!depthEngine!!.isInitialized) {
+            val errorMsg = depthEngine!!.initError ?: "Unknown error"
+            android.util.Log.e("DepthStreamService", "DepthEngine failed to initialize: $errorMsg")
+            errorCallback?.invoke(getString(R.string.error_model_load_failed))
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -76,8 +86,13 @@ class DepthStreamService : Service() {
                 mjpegServer = MjpegServer(port)
                 mjpegServer?.start()
                 startCamera()
+            } catch (e: java.net.BindException) {
+                android.util.Log.e("DepthStreamService", "Port $port already in use", e)
+                errorCallback?.invoke(getString(R.string.error_port_in_use))
+                stopSelf()
             } catch (e: Exception) {
-                e.printStackTrace()
+                android.util.Log.e("DepthStreamService", "Failed to start server", e)
+                errorCallback?.invoke("Server failed to start: ${e.message}")
                 stopSelf()
             }
         }
@@ -122,12 +137,21 @@ class DepthStreamService : Service() {
 
         val manager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
         try {
-            val cameraId = manager.cameraIdList[0]
+            val cameraList = manager.cameraIdList
+            if (cameraList.isEmpty()) {
+                android.util.Log.e("DepthStreamService", "No cameras available")
+                errorCallback?.invoke(getString(R.string.error_camera_failed))
+                return
+            }
+            val cameraId = cameraList[0]
             
             val characteristics = manager.getCameraCharacteristics(cameraId)
             sensorOrientation = characteristics.get(android.hardware.camera2.CameraCharacteristics.SENSOR_ORIENTATION) ?: 0
 
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) return
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                errorCallback?.invoke(getString(R.string.error_permissions_required))
+                return
+            }
             
             manager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
@@ -143,11 +167,22 @@ class DepthStreamService : Service() {
                 override fun onError(camera: CameraDevice, error: Int) {
                     camera.close()
                     cameraDevice = null
+                    val errorMsg = when (error) {
+                        ERROR_CAMERA_IN_USE -> "Camera is in use by another app"
+                        ERROR_MAX_CAMERAS_IN_USE -> "Too many cameras open"
+                        ERROR_CAMERA_DISABLED -> "Camera is disabled"
+                        ERROR_CAMERA_DEVICE -> "Camera device error"
+                        ERROR_CAMERA_SERVICE -> "Camera service error"
+                        else -> "Camera error code: $error"
+                    }
+                    android.util.Log.e("DepthStreamService", errorMsg)
+                    errorCallback?.invoke(getString(R.string.error_camera_failed))
                     stopSelf()
                 }
             }, cameraHandler)
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("DepthStreamService", "Failed to open camera", e)
+            errorCallback?.invoke(getString(R.string.error_camera_failed))
         }
     }
 
@@ -186,6 +221,7 @@ class DepthStreamService : Service() {
             }
             override fun onConfigureFailed(p0: CameraCaptureSession) {
                 android.util.Log.e("DepthStreamService", "Camera capture session configuration failed")
+                errorCallback?.invoke(getString(R.string.error_camera_session_failed))
             }
         }, cameraHandler)
     }
@@ -280,6 +316,7 @@ class DepthStreamService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        mjpegServer?.notifyShutdown()
         mjpegServer?.stop()
         mjpegServer = null
         

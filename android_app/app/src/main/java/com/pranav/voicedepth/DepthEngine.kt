@@ -19,6 +19,12 @@ class DepthEngine(private val context: Context) {
     private var tfliteInterpreter: Interpreter? = null
     private var gpuDelegate: GpuDelegate? = null
     
+    /** True if the TFLite model loaded successfully */
+    val isInitialized: Boolean get() = tfliteInterpreter != null
+    /** Error message if initialization failed, null otherwise */
+    var initError: String? = null
+        private set
+    
     // Performance: Pre-allocated buffers
     private val inputSize = 256
     private val outputBuffer = ByteBuffer.allocateDirect(inputSize * inputSize * 4).apply {
@@ -69,8 +75,8 @@ class DepthEngine(private val context: Context) {
                 android.util.Log.i("DepthEngine", "Successfully initialized TFLite on CPU")
             }
         } catch (e: Exception) {
+            initError = e.message ?: "Unknown TFLite initialization error"
             android.util.Log.e("DepthEngine", "CRITICAL: Failed to load or initialize TFLite model completely", e)
-            e.printStackTrace()
         }
     }
 
