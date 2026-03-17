@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Paint
 import android.graphics.Rect
 import com.google.ar.core.Config
 import com.google.ar.core.Session
@@ -34,6 +33,11 @@ class DepthEngine(private val context: Context) {
     private val pixels = IntArray(inputSize * inputSize)
     private var depthBitmap = Bitmap.createBitmap(inputSize, inputSize, Bitmap.Config.ARGB_8888)
     
+    // Performance: Cache the stateless image processor
+    private val imageProcessor = ImageProcessor.Builder()
+        .add(ResizeOp(inputSize, inputSize, ResizeOp.ResizeMethod.BILINEAR))
+        .build()
+    
     // EMA Smoothing State
     private var smoothedMin: Float? = null
     private var smoothedMax: Float? = null
@@ -46,9 +50,15 @@ class DepthEngine(private val context: Context) {
             if (arSession!!.isDepthModeSupported(Config.DepthMode.AUTOMATIC)) {
                 config.depthMode = Config.DepthMode.AUTOMATIC
                 isArSupported = true
+                arSession!!.configure(config)
+            } else {
+                // Depth not supported — close the session to free native resources
+                arSession!!.close()
+                arSession = null
             }
-            arSession!!.configure(config)
         } catch (e: Exception) {
+            arSession?.close()
+            arSession = null
             isArSupported = false
         }
 
@@ -78,7 +88,8 @@ class DepthEngine(private val context: Context) {
                 
                 // Retry strict CPU initialization
                 val cpuOptions = Interpreter.Options()
-                cpuOptions.setNumThreads(4) // Use 4 CPU cores for better performance
+                val cpuThreads = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
+                cpuOptions.setNumThreads(cpuThreads)
                 tfliteInterpreter = Interpreter(model, cpuOptions)
                 android.util.Log.i("DepthEngine", "Successfully initialized TFLite on CPU")
             }
@@ -109,11 +120,7 @@ class DepthEngine(private val context: Context) {
             return createErrorBitmap(bitmap.width, bitmap.height)
         }
 
-        // Pre-process image
-        val imageProcessor = ImageProcessor.Builder()
-            .add(ResizeOp(inputSize, inputSize, ResizeOp.ResizeMethod.BILINEAR))
-            .build()
-
+        // Re-use the cached image processor (it's stateless and reusable)
         var tensorImage = TensorImage(org.tensorflow.lite.DataType.FLOAT32)
         tensorImage.load(bitmap)
         tensorImage = imageProcessor.process(tensorImage)

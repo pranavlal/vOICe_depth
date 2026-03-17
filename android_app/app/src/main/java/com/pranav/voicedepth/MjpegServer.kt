@@ -3,18 +3,18 @@ package com.pranav.voicedepth
 import android.graphics.Bitmap
 import fi.iki.elonen.NanoHTTPD
 import java.io.ByteArrayOutputStream
-import java.io.IOException
 
 class MjpegServer(port: Int) : NanoHTTPD("127.0.0.1", port) {
 
     private val frameLock = Object()
     private var currentFrame: ByteArray? = null
+    private val compressStream = ByteArrayOutputStream()
 
     fun setFrame(bitmap: Bitmap) {
-        val stream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, stream)
+        compressStream.reset()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, compressStream)
         synchronized(frameLock) {
-            currentFrame = stream.toByteArray()
+            currentFrame = compressStream.toByteArray()
             frameLock.notifyAll()
         }
     }

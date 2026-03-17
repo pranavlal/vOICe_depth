@@ -16,7 +16,6 @@ import android.graphics.ImageFormat
 import android.graphics.Matrix
 import android.graphics.Rect
 import android.graphics.YuvImage
-import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraCaptureSession
 import android.hardware.camera2.CameraDevice
 import android.hardware.camera2.CameraManager
@@ -38,6 +37,7 @@ class DepthStreamService : Service() {
     private var depthEngine: DepthEngine? = null
     
     private var cameraDevice: CameraDevice? = null
+    private var captureSession: CameraCaptureSession? = null
     private var cameraThread: HandlerThread? = null
     private var cameraHandler: Handler? = null
     private var imageReader: ImageReader? = null
@@ -156,31 +156,37 @@ class DepthStreamService : Service() {
         imageReader?.setOnImageAvailableListener({ reader ->
             val image = reader.acquireLatestImage() ?: return@setOnImageAvailableListener
             
-            val bitmap = imageToBitmap(image)
-            image.close()
+            try {
+                val bitmap = imageToBitmap(image)
 
-            if (bitmap != null) {
-                val depthBitmap = depthEngine?.processFrame(bitmap)
-                if (depthBitmap != null) {
-                    val degrees = sensorOrientation
-                    val rotatedBitmap = rotateBitmap(depthBitmap, degrees)
-                    
-                    mjpegServer?.setFrame(depthBitmap) // Send un-rotated raw sensor image to The vOICe
-                    
-                    // Send upright rotated image to local UI preview if bound
-                    frameCallback?.invoke(rotatedBitmap)
+                if (bitmap != null) {
+                    val depthBitmap = depthEngine?.processFrame(bitmap)
+                    if (depthBitmap != null) {
+                        val degrees = sensorOrientation
+                        val rotatedBitmap = rotateBitmap(depthBitmap, degrees)
+                        
+                        mjpegServer?.setFrame(depthBitmap) // Send un-rotated raw sensor image to The vOICe
+                        
+                        // Send upright rotated image to local UI preview if bound
+                        frameCallback?.invoke(rotatedBitmap)
+                    }
                 }
+            } finally {
+                image.close()
             }
         }, cameraHandler)
 
         cameraDevice?.createCaptureSession(listOf(imageReader!!.surface), object : CameraCaptureSession.StateCallback() {
             override fun onConfigured(session: CameraCaptureSession) {
+                captureSession = session
                 val request = cameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
                     addTarget(imageReader!!.surface)
                 }
                 session.setRepeatingRequest(request.build(), null, cameraHandler)
             }
-            override fun onConfigureFailed(p0: CameraCaptureSession) {}
+            override fun onConfigureFailed(p0: CameraCaptureSession) {
+                android.util.Log.e("DepthStreamService", "Camera capture session configuration failed")
+            }
         }, cameraHandler)
     }
 
@@ -228,9 +234,15 @@ class DepthStreamService : Service() {
         depthEngine?.stop()
         depthEngine = null
 
+        captureSession?.close()
+        captureSession = null
+
         cameraDevice?.close()
         cameraDevice = null
         
+        imageReader?.close()
+        imageReader = null
+
         cameraThread?.quitSafely()
         cameraThread = null
     }

@@ -11,7 +11,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
-import android.view.Surface
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
@@ -136,7 +135,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getLocalIpAddress(): String? {
-        return "127.0.0.1"
+        try {
+            val interfaces = Collections.list(NetworkInterface.getNetworkInterfaces())
+            for (intf in interfaces) {
+                val addrs = Collections.list(intf.inetAddresses)
+                for (addr in addrs) {
+                    if (!addr.isLoopbackAddress && addr is Inet4Address) {
+                        return addr.hostAddress
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Failed to get local IP address", e)
+        }
+        return null
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 101 && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+            startServer()
+        } else {
+            Toast.makeText(this, "Permissions required to start server", Toast.LENGTH_SHORT).show()
+        }
     }
 
     override fun onDestroy() {
