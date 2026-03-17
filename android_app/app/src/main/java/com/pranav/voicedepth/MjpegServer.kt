@@ -49,6 +49,7 @@ class MjpegServer(port: Int) : NanoHTTPD("127.0.0.1", port) {
     private inner class MjpegStream : java.io.InputStream() {
         private var currentBuffer: ByteArray? = null
         private var bufferPos = 0
+        private var lastSentFrame: ByteArray? = null
 
         override fun read(): Int {
             val singleByte = ByteArray(1)
@@ -62,7 +63,7 @@ class MjpegServer(port: Int) : NanoHTTPD("127.0.0.1", port) {
             while (currentBuffer == null || bufferPos >= currentBuffer!!.size) {
                 val frame: ByteArray?
                 synchronized(frameLock) {
-                    if (currentFrame == null) {
+                    while (currentFrame == null || currentFrame === lastSentFrame) {
                         try { 
                             frameLock.wait() 
                         } catch (e: InterruptedException) { 
@@ -70,6 +71,7 @@ class MjpegServer(port: Int) : NanoHTTPD("127.0.0.1", port) {
                         }
                     }
                     frame = currentFrame
+                    lastSentFrame = currentFrame
                 }
                 
                 if (frame == null) continue // Should not happen given the wait structure, but safe check
