@@ -4,7 +4,7 @@ import android.graphics.Bitmap
 import fi.iki.elonen.NanoHTTPD
 import java.io.ByteArrayOutputStream
 
-class MjpegServer(port: Int) : NanoHTTPD("127.0.0.1", port) {
+class MjpegServer(hostname: String?, port: Int) : NanoHTTPD(hostname, port) {
 
     private val frameLock = Object()
     private var currentFrame: ByteArray? = null

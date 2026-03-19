@@ -11,9 +11,9 @@
         android:id="@+id/statusTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/server_stopped"
+        android:text="Server Stopped"
         android:textSize="18sp"
-        android:layout_marginTop="32dp"
+        android:layout_marginTop="16dp"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
@@ -23,7 +23,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text=""
-        android:textSize="20sp"
+        android:textSize="18sp"
         android:textStyle="bold"
         android:layout_marginTop="8dp"
         android:padding="8dp"
@@ -32,6 +32,17 @@
         android:focusable="true"
         android:contentDescription="MJPEG Server Address"
         app:layout_constraintTop_toBottomOf="@id/statusTextView"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/remoteSwitch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Enable Remote Streaming (WiFi)"
+        android:layout_marginTop="8dp"
+        android:checked="false"
+        app:layout_constraintTop_toBottomOf="@id/urlTextView"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
@@ -47,7 +58,7 @@
         android:focusableInTouchMode="true"
         android:importantForAccessibility="yes"
         android:contentDescription="Real-time depth map view. Shows distance to objects in front of the camera."
-        app:layout_constraintTop_toBottomOf="@id/urlTextView"
+        app:layout_constraintTop_toBottomOf="@id/remoteSwitch"
         app:layout_constraintBottom_toTopOf="@id/buttonContainer"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
@@ -67,7 +78,7 @@
             android:layout_height="80dp"
             android:layout_weight="1"
             android:layout_marginEnd="8dp"
-            android:text="@string/start_server"
+            android:text="Start Server"
             android:textSize="18sp"
             android:contentDescription="Start depth map server" />
 
@@ -77,7 +88,7 @@
             android:layout_height="80dp"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
-            android:text="@string/stop_server"
+            android:text="Stop Server"
             android:textSize="18sp"
             android:enabled="false"
             android:contentDescription="Stop depth map server" />

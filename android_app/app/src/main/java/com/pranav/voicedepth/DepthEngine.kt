@@ -11,6 +11,7 @@ import org.tensorflow.lite.support.common.FileUtil
 import org.tensorflow.lite.support.image.ImageProcessor
 import org.tensorflow.lite.support.image.TensorImage
 import org.tensorflow.lite.support.image.ops.ResizeOp
+import org.tensorflow.lite.support.image.ops.NormalizeOp
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -37,6 +38,7 @@ class DepthEngine(private val context: Context) {
     // Performance: Cache the stateless image processor
     private val imageProcessor = ImageProcessor.Builder()
         .add(ResizeOp(inputSize, inputSize, ResizeOp.ResizeMethod.BILINEAR))
+        .add(NormalizeOp(115.0f, 58.0f))
         .build()
     
     // EMA Smoothing State

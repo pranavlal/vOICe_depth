@@ -11,14 +11,16 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
-import android.view.accessibility.AccessibilityEvent
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.SwitchCompat
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import java.net.Inet4Address
+import java.net.NetworkInterface
 
 class MainActivity : AppCompatActivity() {
 
@@ -27,6 +29,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var depthImageView: ImageView
     private lateinit var startButton: Button
     private lateinit var stopButton: Button
+    private lateinit var remoteSwitch: SwitchCompat
 
     private var streamService: DepthStreamService? = null
     private var isBound = false
@@ -37,18 +40,16 @@ class MainActivity : AppCompatActivity() {
             streamService = binder.getService()
             isBound = true
 
-            // Wire up frame preview callback
             streamService?.setFrameCallback { bitmap ->
-                runOnUiThread {
-                    depthImageView.setImageBitmap(bitmap)
-                }
+                runOnUiThread { depthImageView.setImageBitmap(bitmap) }
             }
 
-            // Wire up error callback to show errors in the UI
             streamService?.setErrorCallback { errorMessage ->
-                runOnUiThread {
-                    showError(errorMessage)
-                }
+                runOnUiThread { showError(errorMessage) }
+            }
+
+            streamService?.setPortCallback { actualPort ->
+                runOnUiThread { updateUrlDisplay(actualPort) }
             }
         }
 
@@ -67,6 +68,7 @@ class MainActivity : AppCompatActivity() {
         depthImageView = findViewById(R.id.depthImageView)
         startButton = findViewById(R.id.startButton)
         stopButton = findViewById(R.id.stopButton)
+        remoteSwitch = findViewById(R.id.remoteSwitch)
 
         startButton.setOnClickListener { startServer() }
         stopButton.setOnClickListener { stopServer() }
@@ -77,15 +79,31 @@ class MainActivity : AppCompatActivity() {
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 val clip = ClipData.newPlainText("MJPEG URL", url)
                 clipboard.setPrimaryClip(clip)
-                Toast.makeText(this, R.string.copy_to_clipboard, Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "URL copied to clipboard", Toast.LENGTH_SHORT).show()
             }
         }
+
+        remoteSwitch.setOnCheckedChangeListener { _, isChecked ->
+            if (startButton.isEnabled == false) {
+                // If server is running, inform user they need to restart to apply network changes
+                Toast.makeText(this, "Restart server to apply network changes", Toast.LENGTH_LONG).show()
+            }
+            updateUrlDisplay(8080)
+        }
         
-        // Initial setup
-        depthImageView.contentDescription = getString(R.string.depth_preview_idle)
-        val ip = getLocalIpAddress() ?: "127.0.0.1"
-        val port = 8080
-        urlTextView.text = "http://$ip:$port/depth_stream.mjpeg"
+        depthImageView.contentDescription = "Depth preview idle"
+        updateUrlDisplay(8080)
+    }
+
+    private fun updateUrlDisplay(port: Int) {
+        val isRemote = remoteSwitch.isChecked
+        val ip = if (isRemote) (getLocalIpAddress() ?: "127.0.0.1") else "127.0.0.1"
+        val url = "http://$ip:$port/depth_stream.mjpeg"
+        urlTextView.text = url
+        
+        if (!startButton.isEnabled) {
+            statusTextView.announceForAccessibility("Server address updated to $url")
+        }
     }
 
     private fun startServer() {
@@ -105,6 +123,7 @@ class MainActivity : AppCompatActivity() {
 
         val intent = Intent(this, DepthStreamService::class.java)
         intent.putExtra("port", 8080)
+        intent.putExtra("isRemote", remoteSwitch.isChecked)
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)
@@ -114,55 +133,47 @@ class MainActivity : AppCompatActivity() {
         
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
 
-        val url = urlTextView.text.toString()
-        statusTextView.setText(R.string.server_running)
-        depthImageView.contentDescription = getString(R.string.depth_preview_active)
+        statusTextView.text = "Server running..."
+        depthImageView.contentDescription = "Depth preview active"
         startButton.isEnabled = false
         stopButton.isEnabled = true
-
-        // Accessibility: announce server started
-        announceForAccessibility(getString(R.string.server_started_announcement, url))
+        remoteSwitch.isEnabled = false // Disable toggle while running to avoid confusion
     }
 
     private fun stopServer() {
         unbindFromService()
-        
         val intent = Intent(this, DepthStreamService::class.java)
         stopService(intent)
 
-        statusTextView.setText(R.string.server_stopped)
-        urlTextView.text = ""
-        depthImageView.contentDescription = getString(R.string.depth_preview_idle)
+        statusTextView.text = "Server stopped"
+        depthImageView.contentDescription = "Depth preview idle"
         depthImageView.setImageDrawable(null)
         startButton.isEnabled = true
         stopButton.isEnabled = false
-
-        // Accessibility: announce server stopped
-        announceForAccessibility(getString(R.string.server_stopped_announcement))
+        remoteSwitch.isEnabled = true
+        
+        updateUrlDisplay(8080)
     }
 
     private fun showError(message: String) {
-        statusTextView.text = message
-        depthImageView.contentDescription = getString(R.string.depth_preview_error, message)
-        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-
-        // Reset buttons so user can retry
-        startButton.isEnabled = true
-        stopButton.isEnabled = false
-
-        // Accessibility: announce the error
-        announceForAccessibility(message)
-    }
-
-    /** Send an accessibility announcement so screen readers speak the message */
-    private fun announceForAccessibility(message: String) {
-        statusTextView.announceForAccessibility(message)
+        try {
+            statusTextView.text = message
+            depthImageView.contentDescription = "Depth preview error: $message"
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            startButton.isEnabled = true
+            stopButton.isEnabled = false
+            remoteSwitch.isEnabled = true
+            statusTextView.announceForAccessibility(message)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun unbindFromService() {
         if (isBound) {
             streamService?.setFrameCallback(null)
             streamService?.setErrorCallback(null)
+            streamService?.setPortCallback(null)
             unbindService(serviceConnection)
             isBound = false
             streamService = null
@@ -170,7 +181,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getLocalIpAddress(): String? {
-        return "127.0.0.1"
+        try {
+            val interfaces = NetworkInterface.getNetworkInterfaces()
+            while (interfaces.hasMoreElements()) {
+                val networkInterface = interfaces.nextElement()
+                val addresses = networkInterface.inetAddresses
+                while (addresses.hasMoreElements()) {
+                    val address = addresses.nextElement()
+                    if (!address.isLoopbackAddress && address is Inet4Address) {
+                        return address.hostAddress
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Error getting IP address", e)
+        }
+        return null
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -178,7 +204,7 @@ class MainActivity : AppCompatActivity() {
         if (requestCode == 101 && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
             startServer()
         } else {
-            showError(getString(R.string.error_permissions_required))
+            showError("Camera and Notification permissions are required.")
         }
     }
 

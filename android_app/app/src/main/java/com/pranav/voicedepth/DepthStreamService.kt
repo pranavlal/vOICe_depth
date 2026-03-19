@@ -44,6 +44,7 @@ class DepthStreamService : Service() {
     
     private var frameCallback: ((Bitmap) -> Unit)? = null
     private var errorCallback: ((String) -> Unit)? = null
+    private var portCallback: ((Int) -> Unit)? = null
     private var sensorOrientation = 0
     
     // Performance: Reusable objects to prevent GC thrashing
@@ -66,35 +67,45 @@ class DepthStreamService : Service() {
         errorCallback = callback
     }
 
+    fun setPortCallback(callback: ((Int) -> Unit)?) {
+        portCallback = callback
+    }
+
     override fun onCreate() {
         super.onCreate()
         depthEngine = DepthEngine(this)
         if (!depthEngine!!.isInitialized) {
             val errorMsg = depthEngine!!.initError ?: "Unknown error"
             android.util.Log.e("DepthStreamService", "DepthEngine failed to initialize: $errorMsg")
-            errorCallback?.invoke(getString(R.string.error_model_load_failed))
+            errorCallback?.invoke("Model failed to load: $errorMsg")
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val port = intent?.getIntExtra("port", 8080) ?: 8080
+        val isRemote = intent?.getBooleanExtra("isRemote", false) ?: false
         
         startForegroundServiceNotification()
         
         if (mjpegServer == null) {
             try {
-                mjpegServer = MjpegServer(port)
+                val hostname = if (isRemote) null else "127.0.0.1"
+                mjpegServer = MjpegServer(hostname, port)
                 mjpegServer?.start()
+                portCallback?.invoke(port)
                 startCamera()
             } catch (e: java.net.BindException) {
                 android.util.Log.e("DepthStreamService", "Port $port already in use", e)
-                errorCallback?.invoke(getString(R.string.error_port_in_use))
+                errorCallback?.invoke("Port $port is already in use.")
                 stopSelf()
             } catch (e: Exception) {
                 android.util.Log.e("DepthStreamService", "Failed to start server", e)
                 errorCallback?.invoke("Server failed to start: ${e.message}")
                 stopSelf()
             }
+        } else {
+            // Already running, just notify port again
+            portCallback?.invoke(port)
         }
         
         return START_NOT_STICKY
@@ -140,7 +151,7 @@ class DepthStreamService : Service() {
             val cameraList = manager.cameraIdList
             if (cameraList.isEmpty()) {
                 android.util.Log.e("DepthStreamService", "No cameras available")
-                errorCallback?.invoke(getString(R.string.error_camera_failed))
+                errorCallback?.invoke("No cameras available on this device.")
                 return
             }
             val cameraId = cameraList[0]
@@ -149,7 +160,7 @@ class DepthStreamService : Service() {
             sensorOrientation = characteristics.get(android.hardware.camera2.CameraCharacteristics.SENSOR_ORIENTATION) ?: 0
 
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                errorCallback?.invoke(getString(R.string.error_permissions_required))
+                errorCallback?.invoke("Camera permission is required.")
                 return
             }
             
@@ -176,13 +187,13 @@ class DepthStreamService : Service() {
                         else -> "Camera error code: $error"
                     }
                     android.util.Log.e("DepthStreamService", errorMsg)
-                    errorCallback?.invoke(getString(R.string.error_camera_failed))
+                    errorCallback?.invoke("Camera error: $errorMsg")
                     stopSelf()
                 }
             }, cameraHandler)
         } catch (e: Exception) {
             android.util.Log.e("DepthStreamService", "Failed to open camera", e)
-            errorCallback?.invoke(getString(R.string.error_camera_failed))
+            errorCallback?.invoke("Failed to open camera: ${e.message}")
         }
     }
 
@@ -221,14 +232,11 @@ class DepthStreamService : Service() {
             }
             override fun onConfigureFailed(p0: CameraCaptureSession) {
                 android.util.Log.e("DepthStreamService", "Camera capture session configuration failed")
-                errorCallback?.invoke(getString(R.string.error_camera_session_failed))
+                errorCallback?.invoke("Camera session configuration failed.")
             }
         }, cameraHandler)
     }
 
-    private var nv21Buffer: ByteArray? = null
-
-    // From Method #3 in https://medium.com/@eeshan.jamal/convert-image-from-yuv-420-888-to-nv21-format-in-android-part-i-a0aa1e7fb3d0
     private fun imageToBitmap(image: android.media.Image): Bitmap? {
         val width = image.width
         val height = image.height
@@ -241,60 +249,28 @@ class DepthStreamService : Service() {
         val uBuffer = image.planes[1].buffer.also { it.rewind() } // U
         val vBuffer = image.planes[2].buffer.also { it.rewind() } // V
 
-        var rowStride = image.planes[0].rowStride
-        assert(image.planes[0].pixelStride == 1)
-
+        val rowStride = image.planes[0].rowStride
         var pos = 0
 
-        if (rowStride == width) { // likely
+        if (rowStride == width) {
             yBuffer[nv21, 0, ySize]
             pos += ySize
         } else {
-            var yBufferPos = -rowStride.toLong() // not an actual position
+            var yBufferPos = 0
             while (pos < ySize) {
-                yBufferPos += rowStride.toLong()
-                yBuffer.position(yBufferPos.toInt())
+                yBuffer.position(yBufferPos)
                 yBuffer[nv21, pos, width]
+                yBufferPos += rowStride
                 pos += width
             }
         }
 
-        rowStride = image.planes[2].rowStride
-        val pixelStride = image.planes[2].pixelStride
+        val uvRowStride = image.planes[2].rowStride
+        val uvPixelStride = image.planes[2].pixelStride
 
-        assert(rowStride == image.planes[1].rowStride)
-        assert(pixelStride == image.planes[1].pixelStride)
-
-        if (pixelStride == 2 && rowStride == width && uBuffer[0] == vBuffer[1]) {
-            // maybe V and U planes overlap as per NV21, which means vBuffer[1] is alias of uBuffer[0]
-            val savePixel = vBuffer[1]
-            try {
-                vBuffer.put(1, (savePixel.toInt().inv()).toByte())
-                if (uBuffer[0] == (savePixel.toInt().inv()).toByte()) {
-                    vBuffer.put(1, savePixel)
-                    vBuffer.position(0)
-                    uBuffer.position(0)
-                    vBuffer[nv21, ySize, 1]
-                    uBuffer[nv21, ySize + 1, uBuffer.remaining()]
-
-                    val yuvImage = YuvImage(nv21, ImageFormat.NV21, width, height, null)
-                    jpegOutputStream.reset()
-                    yuvImage.compressToJpeg(Rect(0, 0, width, height), 90, jpegOutputStream)
-                    val imageBytes = jpegOutputStream.toByteArray()
-                    return BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-                }
-            } catch (ex: Exception) {
-                // unfortunately, we cannot check if vBuffer and uBuffer overlap
-            }
-
-            // unfortunately, the check failed. We must save U and V pixel by pixel
-            vBuffer.put(1, savePixel)
-        }
-
-        // other currentFrame, currentFrame by currentFrame
         for (row in 0 until height / 2) {
             for (col in 0 until width / 2) {
-                val vuPos = col * pixelStride + row * rowStride
+                val vuPos = col * uvPixelStride + row * uvRowStride
                 nv21[pos++] = vBuffer[vuPos]
                 nv21[pos++] = uBuffer[vuPos]
             }
