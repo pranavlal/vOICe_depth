@@ -87,17 +87,18 @@ In the interest of transparancy, I have vibe coded this program. I have  however
 I welcome constructive engagement and  will do my best to fix bugs.
 
 ## Android Application
-A native Android application is now available in the `android_app` directory. This app functions as a depth map media server, capturing real-time depth (via hardware ARCore or AI fallback) and streaming it as an MJPEG server.
+A native Android application is available in the `android_app` directory. This app functions as a depth map media server, capturing real-time depth and streaming it as an MJPEG server for The vOICe.
 
-### Features
-- Support for hardware depth sensing.
-- AI-based mono-depth fallback (MiDaS).
-- Low-latency MJPEG streaming.
-- Fully accessible interface with screen-reader support.
+### New in Release 1.2
+- **Optimized Normalization**: Implemented `NormalizeOp(115.0f, 58.0f)` for the MiDaS model, significantly improving depth map contrast and accuracy.
+- **Privacy by Default**: The MJPEG server now defaults to **localhost-only (`127.0.0.1`)** binding. This means the depth stream is only accessible to "The vOICe for Android" running on the same device.
+- **Remote Streaming Toggle**: Added an "Enable Remote Streaming" switch for debugging and testing. When enabled, the app broadcasts on your WiFi network and displays your device's local IP address.
+- **Enhanced Accuracy**: Uses the MiDaS (Small) TFLite model with GPU acceleration support for smooth, real-time depth estimation.
 
 ### Integration with The vOICe for Android
 The MJPEG stream from this app is designed to be used as a video source for **The vOICe for Android**. 
 1. Download and install **The vOICe for Android** from [seeingwithsound.com/android.htm](https://www.seeingwithsound.com/android.htm).
-2. Start the Depth Map Server app and tap **Start Server**.
-3. Note the MJPEG URL (e.g., `http://192.168.1.x:8080/depth_stream.mjpeg`).
-4. In **The vOICe for Android**, configure the camera source to use this network stream URL to perceive depth information through sound.
+2. Start the vOICe Depth app and tap **Start Server**.
+3. By default, the URL will be `http://127.0.0.1:8080/depth_stream.mjpeg`.
+4. If you need to test from another device, enable **Remote Streaming** to see your network IP.
+5. In **The vOICe for Android**, configure the camera source to use the provided network stream URL.
