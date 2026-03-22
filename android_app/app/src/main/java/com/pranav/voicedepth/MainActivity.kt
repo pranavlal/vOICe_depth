@@ -39,6 +39,7 @@ class MainActivity : AppCompatActivity() {
             val binder = service as DepthStreamService.LocalBinder
             streamService = binder.getService()
             isBound = true
+            android.util.Log.i("MainActivity", "Service connected and bound")
 
             streamService?.setFrameCallback { bitmap ->
                 runOnUiThread { depthImageView.setImageBitmap(bitmap) }
@@ -56,6 +57,7 @@ class MainActivity : AppCompatActivity() {
         override fun onServiceDisconnected(name: ComponentName?) {
             streamService = null
             isBound = false
+            android.util.Log.w("MainActivity", "Service disconnected unexpectedly")
         }
     }
 
@@ -84,6 +86,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         remoteSwitch.setOnCheckedChangeListener { _, isChecked ->
+            val mode = if (isChecked) "Remote (WiFi IP)" else "Local (127.0.0.1)"
+            statusTextView.announceForAccessibility("Streaming mode changed to $mode")
+            android.util.Log.i("MainActivity", "Remote streaming toggle: $isChecked")
+            
             if (startButton.isEnabled == false) {
                 // If server is running, inform user they need to restart to apply network changes
                 Toast.makeText(this, "Restart server to apply network changes", Toast.LENGTH_LONG).show()
@@ -134,6 +140,7 @@ class MainActivity : AppCompatActivity() {
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
 
         statusTextView.text = "Server running..."
+        statusTextView.announceForAccessibility("Server started on ${urlTextView.text}")
         depthImageView.contentDescription = "Depth preview active"
         startButton.isEnabled = false
         stopButton.isEnabled = true

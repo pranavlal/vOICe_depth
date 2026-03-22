@@ -52,6 +52,8 @@ class DepthStreamService : Service() {
     // Performance: Reusable objects to prevent GC thrashing
     private val jpegOutputStream = ByteArrayOutputStream()
     private val rotationMatrix = Matrix()
+    private var cachedRotatedBitmap: Bitmap? = null
+    private var rotationCanvas: android.graphics.Canvas? = null
 
     inner class LocalBinder : Binder() {
         fun getService(): DepthStreamService = this@DepthStreamService
@@ -84,7 +86,9 @@ class DepthStreamService : Service() {
     }
 
     fun stopStuff() {
+       android.util.Log.i("DepthStreamService", "Stopping service and cleaning up resources")
        depthEngine?.stop()
+       mjpegServer?.notifyShutdown()
        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
        stopSelf()
     }
@@ -219,7 +223,7 @@ class DepthStreamService : Service() {
                         val degrees = sensorOrientation
                         val rotatedBitmap = rotateBitmap(depthBitmap, degrees)
                         
-                        mjpegServer?.setFrame(rotatedBitmap) // Send upright rotated image to The vOICe
+                        mjpegServer?.setFrame(rotatedBitmap) // Send upright rotated image
                         
                         // Send upright rotated image to local UI preview if bound
                         frameCallback?.invoke(rotatedBitmap)
@@ -293,9 +297,28 @@ class DepthStreamService : Service() {
     
     private fun rotateBitmap(bitmap: Bitmap, degrees: Int): Bitmap {
         if (degrees == 0) return bitmap
+        
+        val newWidth = if (degrees % 180 == 0) bitmap.width else bitmap.height
+        val newHeight = if (degrees % 180 == 0) bitmap.height else bitmap.width
+        
+        if (cachedRotatedBitmap == null || cachedRotatedBitmap!!.width != newWidth || cachedRotatedBitmap!!.height != newHeight) {
+            android.util.Log.i("DepthStreamService", "Allocating new rotated bitmap: ${newWidth}x${newHeight}")
+            cachedRotatedBitmap = Bitmap.createBitmap(newWidth, newHeight, Bitmap.Config.ARGB_8888)
+            rotationCanvas = android.graphics.Canvas(cachedRotatedBitmap!!)
+        }
+        
         rotationMatrix.reset()
         rotationMatrix.postRotate(degrees.toFloat())
-        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, rotationMatrix, true)
+        
+        // Correct translation after rotation around 0,0
+        if (degrees == 90) rotationMatrix.postTranslate(newWidth.toFloat(), 0f)
+        else if (degrees == 180) rotationMatrix.postTranslate(newWidth.toFloat(), newHeight.toFloat())
+        else if (degrees == 270) rotationMatrix.postTranslate(0f, newHeight.toFloat())
+        
+        rotationCanvas?.drawColor(android.graphics.Color.BLACK, android.graphics.PorterDuff.Mode.CLEAR)
+        rotationCanvas?.drawBitmap(bitmap, rotationMatrix, null)
+        
+        return cachedRotatedBitmap!!
     }
 
     override fun onDestroy() {

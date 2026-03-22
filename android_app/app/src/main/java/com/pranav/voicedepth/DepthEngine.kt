@@ -87,8 +87,14 @@ class DepthEngine(private val context: Context) {
     private var cachedCanvas: Canvas? = null
     private val scaledDestRect = Rect()
 
+    @Synchronized
     fun processFrame(bitmap: Bitmap): Bitmap {
-        return processAiDepth(bitmap)
+        return try {
+            processAiDepth(bitmap)
+        } catch (e: Exception) {
+            android.util.Log.e("DepthEngine", "Error during frame processing", e)
+            createErrorBitmap(bitmap.width, bitmap.height)
+        }
     }
 
     private fun processAiDepth(bitmap: Bitmap): Bitmap {
@@ -105,7 +111,12 @@ class DepthEngine(private val context: Context) {
 
         // Run inference
         outputBuffer.rewind()
-        interpreter.run(tensorImage.buffer, outputBuffer)
+        try {
+            interpreter.run(tensorImage.buffer, outputBuffer)
+        } catch (e: Exception) {
+            android.util.Log.e("DepthEngine", "TFLite inference failed", e)
+            return createErrorBitmap(bitmap.width, bitmap.height)
+        }
 
         // Post-process output
         outputBuffer.rewind()
