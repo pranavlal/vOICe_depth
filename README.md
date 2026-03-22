@@ -89,18 +89,38 @@ I welcome constructive engagement and  will do my best to fix bugs.
 ## Android Application
 A native Android application is available in the `android_app` directory. This app functions as a depth map media server, capturing real-time depth and streaming it as an MJPEG server for The vOICe.
 
-### New in Release 1.3
-- **TFLite GPU Delegate Fix**: Resolved a critical `NoClassDefFoundError` that caused crashes when initializing GPU acceleration on certain devices.
-- **Improved Error Handling**: Enhanced the TFLite initialization logic to gracefully fall back to CPU if GPU or native libraries fail to load, ensuring the app remains functional.
-- **Optimized Normalization**: Implemented `NormalizeOp(115.0f, 58.0f)` for the MiDaS model, significantly improving depth map contrast and accuracy.
-- **Privacy by Default**: The MJPEG server now defaults to **localhost-only (`127.0.0.1`)** binding.
-- **Remote Streaming Toggle**: Added an "Enable Remote Streaming" switch for debugging and testing.
-- **Enhanced Accuracy**: Uses the MiDaS (Small) TFLite model with GPU acceleration support for smooth, real-time depth estimation.
+### New in Release 1.4
+- **Performance Audit & Optimization**: Conducted a comprehensive code audit.
+- **Memory Efficient MJPEG**: Rewrote the MJPEG streaming engine to use a state-based `InputStream`, eliminating per-frame memory allocations and reducing GC overhead.
+- **Optimized Rotation**: Implemented reusable bitmaps and `Canvas`-based rotation for the depth stream, significantly improving frame rates on budget devices.
+- **Enhanced Accessibility**: Added proactive TalkBack announcements for server status and streaming mode changes.
+- **Regression Guard**: Verified and secured historical fixes for TFLite stability and EMA smoothing.
 
-### Integration with The vOICe for Android
+## Developer Guide: Android Architecture
+
+The Android application is designed for high-performance, low-latency depth sonification. Below is a breakdown of the core components for developers looking to fork or extend the project.
+
+### Core Components
+- **`MainActivity.kt`**: Manages the UI state, permissions, and service binding. It acts as the controller for the `DepthStreamService`.
+- **`DepthStreamService.kt`**: A **Foreground Service** that owns the camera lifecycle and the MJPEG server. It captures YUV420 frames and pipes them through the AI engine.
+- **`DepthEngine.kt`**: Wraps the **TFLite Interpreter**. It uses a MiDaS (Small) model to compute monocular depth. Key features:
+    - **EMA Smoothing**: Uses Exponential Moving Average to prevent depth map "flickering" due to variations in inference lighting.
+    - **CPU/GPU Fallback**: Robust initialization logic that attempts GPU acceleration but gracefully falls back to optimized CPU execution if native delegates fail.
+- **`MjpegServer.kt`**: A custom implementation based on `NanoHTTPD`. It serves the depth map as a standard `multipart/x-mixed-replace` stream.
+    - **Optimization**: Uses a state-machine based `InputStream` to serve frames byte-by-byte, avoiding redundant buffer copies.
+
+### Key Performance Patterns
+1. **Bitmap Reuse**: Most `Bitmap` objects are pre-allocated and reused to avoid the "Stop-the-World" Garbage Collection pauses that can ruin a real-time sonification experience.
+2. **Dedicated Threads**: Camera capture and AI inference run on a background `HandlerThread` to ensure the UI remains responsive.
+3. **Synchronized Processing**: The engine is thread-safe, ensuring that if multiple clients connect to the MJPEG server, the depth map generation remains consistent.
+
+### Extending the App
+- **New Models**: To swap the AI model, replace `midas_small.tflite` in `assets` and update the normalization parameters in `DepthEngine.kt`.
+- **New Sonification Intents**: The `launchVoice()` logic (previously removed for simplicity) can be re-added or modified in `MainActivity.kt` to target other accessibility tools.
+
+## Integration with The vOICe for Android
 The MJPEG stream from this app is designed to be used as a video source for **The vOICe for Android**. 
 1. Download and install **The vOICe for Android** from [seeingwithsound.com/android.htm](https://www.seeingwithsound.com/android.htm).
 2. Start the vOICe Depth app and tap **Start Server**.
 3. By default, the URL will be `http://127.0.0.1:8080/depth_stream.mjpeg`.
-4. If you need to test from another device, enable **Remote Streaming** to see your network IP.
-5. In **The vOICe for Android**, configure the camera source to use the provided network stream URL.
+4. Configure the vOICe for Android to use this URL as its camera source.
