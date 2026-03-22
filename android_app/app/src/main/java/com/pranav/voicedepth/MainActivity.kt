@@ -140,10 +140,10 @@ class MainActivity : AppCompatActivity() {
         remoteSwitch.isEnabled = false // Disable toggle while running to avoid confusion
     }
 
+
     private fun stopServer() {
         unbindFromService()
-        val intent = Intent(this, DepthStreamService::class.java)
-        stopService(intent)
+        streamService?.stopStuff()
 
         statusTextView.text = "Server stopped"
         depthImageView.contentDescription = "Depth preview idle"

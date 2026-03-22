@@ -27,6 +27,8 @@ import android.os.HandlerThread
 import android.os.IBinder
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
+
 import java.io.ByteArrayOutputStream
 
 class DepthStreamService : Service() {
@@ -79,6 +81,12 @@ class DepthStreamService : Service() {
             android.util.Log.e("DepthStreamService", "DepthEngine failed to initialize: $errorMsg")
             errorCallback?.invoke("Model failed to load: $errorMsg")
         }
+    }
+
+    fun stopStuff() {
+       depthEngine?.stop()
+       ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+       stopSelf()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -211,7 +219,7 @@ class DepthStreamService : Service() {
                         val degrees = sensorOrientation
                         val rotatedBitmap = rotateBitmap(depthBitmap, degrees)
                         
-                        mjpegServer?.setFrame(depthBitmap) // Send un-rotated raw sensor image to The vOICe
+                        mjpegServer?.setFrame(rotatedBitmap) // Send upright rotated image to The vOICe
                         
                         // Send upright rotated image to local UI preview if bound
                         frameCallback?.invoke(rotatedBitmap)
