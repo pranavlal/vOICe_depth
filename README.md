@@ -18,7 +18,7 @@ I have created the program to also support Linux though the vOICe does  not nati
 
 You can download the latest standalone version of vOICe Depth directly from the [GitHub Releases](https://github.com/pranavlal/vOICe_depth/releases) page:
 1. Navigate to the **Releases** section on the right-hand side of the GitHub repository (or use the link above).
-2. Download the `vOICe_depth_v1.2.zip` (or highest version available) from the Assets under the latest release.
+2. Download the `vOICe_depth_v1.3.zip` (or highest version available) from the Assets under the latest release.
 3. Extract the ZIP file to a folder on your computer.
 
 ## Installation and execution
@@ -89,10 +89,12 @@ I welcome constructive engagement and  will do my best to fix bugs.
 ## Android Application
 A native Android application is available in the `android_app` directory. This app functions as a depth map media server, capturing real-time depth and streaming it as an MJPEG server for The vOICe.
 
-### New in Release 1.2
+### New in Release 1.3
+- **TFLite GPU Delegate Fix**: Resolved a critical `NoClassDefFoundError` that caused crashes when initializing GPU acceleration on certain devices.
+- **Improved Error Handling**: Enhanced the TFLite initialization logic to gracefully fall back to CPU if GPU or native libraries fail to load, ensuring the app remains functional.
 - **Optimized Normalization**: Implemented `NormalizeOp(115.0f, 58.0f)` for the MiDaS model, significantly improving depth map contrast and accuracy.
-- **Privacy by Default**: The MJPEG server now defaults to **localhost-only (`127.0.0.1`)** binding. This means the depth stream is only accessible to "The vOICe for Android" running on the same device.
-- **Remote Streaming Toggle**: Added an "Enable Remote Streaming" switch for debugging and testing. When enabled, the app broadcasts on your WiFi network and displays your device's local IP address.
+- **Privacy by Default**: The MJPEG server now defaults to **localhost-only (`127.0.0.1`)** binding.
+- **Remote Streaming Toggle**: Added an "Enable Remote Streaming" switch for debugging and testing.
 - **Enhanced Accuracy**: Uses the MiDaS (Small) TFLite model with GPU acceleration support for smooth, real-time depth estimation.
 
 ### Integration with The vOICe for Android
