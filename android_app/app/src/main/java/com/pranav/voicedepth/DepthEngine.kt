@@ -11,7 +11,7 @@ import org.tensorflow.lite.support.common.FileUtil
 import org.tensorflow.lite.support.image.ImageProcessor
 import org.tensorflow.lite.support.image.TensorImage
 import org.tensorflow.lite.support.image.ops.ResizeOp
-import org.tensorflow.lite.support.image.ops.NormalizeOp
+import org.tensorflow.lite.support.common.ops.NormalizeOp
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -61,7 +61,7 @@ class DepthEngine(private val context: Context) {
                 options.addDelegate(gpuDelegate)
                 tfliteInterpreter = Interpreter(model, options)
                 android.util.Log.i("DepthEngine", "Successfully initialized TFLite on GPU")
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 // GPU initialization failed (very common on budget devices or unsupported drivers)
                 android.util.Log.w("DepthEngine", "GPU initialization failed, falling back to CPU", e)
                 
@@ -76,7 +76,7 @@ class DepthEngine(private val context: Context) {
                 tfliteInterpreter = Interpreter(model, cpuOptions)
                 android.util.Log.i("DepthEngine", "Successfully initialized TFLite on CPU")
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             initError = e.message ?: "Unknown TFLite initialization error"
             android.util.Log.e("DepthEngine", "CRITICAL: Failed to load or initialize TFLite model completely", e)
         }
