@@ -76,62 +76,76 @@ class MjpegServer(hostname: String?, port: Int) : NanoHTTPD(hostname, port) {
         override fun read(b: ByteArray, off: Int, len: Int): Int {
             if (len == 0) return 0
             
-            if (state == StreamState.IDLE) {
-                // Wait for a new frame
-                val frame: ByteArray?
-                synchronized(frameLock) {
-                    while (isRunning && (currentFrame == null || currentFrame === lastSentFrame)) {
-                        try { 
-                            frameLock.wait(5000) 
-                        } catch (e: InterruptedException) { 
-                            return -1 
+            while (true) {
+                if (state == StreamState.IDLE) {
+                    // Wait for a new frame
+                    val frame: ByteArray?
+                    synchronized(frameLock) {
+                        while (isRunning && (currentFrame == null || currentFrame === lastSentFrame)) {
+                            try { 
+                                frameLock.wait(5000) 
+                            } catch (e: InterruptedException) { 
+                                return -1 
+                            }
                         }
+                        if (!isRunning) return -1
+                        frame = currentFrame
                     }
-                    if (!isRunning) return -1
-                    frame = currentFrame
+                    
+                    if (frame == null) return 0
+                    
+                    lastSentFrame = frame
+                    val header = ("--frame_boundary\r\n" +
+                                 "Content-Type: image/jpeg\r\n" +
+                                 "Content-Length: ${frame.size}\r\n\r\n").toByteArray()
+                    
+                    currentBuffer = header
+                    bufferPos = 0
+                    state = StreamState.HEADER
                 }
-                
-                if (frame == null) return 0
-                
-                lastSentFrame = frame
-                val header = ("--frame_boundary\r\n" +
-                             "Content-Type: image/jpeg\r\n" +
-                             "Content-Length: ${frame.size}\r\n\r\n").toByteArray()
-                
-                currentBuffer = header
-                bufferPos = 0
-                state = StreamState.HEADER
-            }
 
-            // Provide data from the current active buffer
-            val buffer = currentBuffer ?: return -1
-            val bytesToRead = minOf(len, buffer.size - bufferPos)
-            System.arraycopy(buffer, bufferPos, b, off, bytesToRead)
-            bufferPos += bytesToRead
+                // Provide data from the current active buffer
+                val buffer = currentBuffer ?: return -1
+                val bytesToRead = minOf(len, buffer.size - bufferPos)
+                
+                if (bytesToRead > 0) {
+                    System.arraycopy(buffer, bufferPos, b, off, bytesToRead)
+                    bufferPos += bytesToRead
 
-            if (bufferPos >= buffer.size) {
-                // Transition to next state
-                when (state) {
-                    StreamState.HEADER -> {
-                        currentBuffer = lastSentFrame
-                        bufferPos = 0
-                        state = StreamState.DATA
+                    if (bufferPos >= buffer.size) {
+                        transitionState()
                     }
-                    StreamState.DATA -> {
-                        currentBuffer = "\r\n".toByteArray()
-                        bufferPos = 0
-                        state = StreamState.FOOTER
+                    return bytesToRead
+                } else {
+                    // Current buffer is empty, transition and continue loop to next buffer or wait
+                    transitionState()
+                    if (state == StreamState.IDLE) {
+                        // If we are back to IDLE, it means we finished footer. 
+                        // The while(true) loop will now hit the IDLE check and wait for next frame.
                     }
-                    StreamState.FOOTER -> {
-                        state = StreamState.IDLE
-                        currentBuffer = null
-                        bufferPos = 0
-                    }
-                    else -> {}
                 }
             }
-            
-            return bytesToRead
+        }
+
+        private fun transitionState() {
+            when (state) {
+                StreamState.HEADER -> {
+                    currentBuffer = lastSentFrame
+                    bufferPos = 0
+                    state = StreamState.DATA
+                }
+                StreamState.DATA -> {
+                    currentBuffer = "\r\n".toByteArray()
+                    bufferPos = 0
+                    state = StreamState.FOOTER
+                }
+                StreamState.FOOTER -> {
+                    state = StreamState.IDLE
+                    currentBuffer = null
+                    bufferPos = 0
+                }
+                else -> {}
+            }
         }
 
         override fun close() {
