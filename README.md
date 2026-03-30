@@ -18,7 +18,7 @@ I have created the program to also support Linux though the vOICe does  not nati
 
 You can download the latest standalone version of vOICe Depth directly from the [GitHub Releases](https://github.com/pranavlal/vOICe_depth/releases) page:
 1. Navigate to the **Releases** section on the right-hand side of the GitHub repository (or use the link above).
-2. Download the `vOICe_Depth_v1.5.apk` (or highest version available) from the Assets under the latest release.
+2. Download the `vOICe_Depth_v1.6.apk` (or highest version available) from the Assets under the latest release.
 3. Extract the ZIP file to a folder on your computer.
 
 ## Installation and execution
@@ -88,6 +88,11 @@ I welcome constructive engagement and  will do my best to fix bugs.
 
 ## Android Application
 A native Android application is available in the `android_app` directory. This app functions as a depth map media server, capturing real-time depth and streaming it as an MJPEG server for The vOICe.
+
+### New in Release 1.6
+- **Bitmap Orientation Fix**: Camera frames are now rotated upright before depth processing and rotated back for the MJPEG stream, ensuring correct and consistent orientation in 'The vOICe'.
+- **Performance Optimization**: Implemented a **dual-cache system** for rotated bitmaps. This prevents per-frame memory re-allocations during the dual-rotation process, eliminating GC overhead and ensuring a smooth frame rate even on budget devices.
+- **Java Classpath Synchronization**: Synchronized and updated core dependencies (AndroidX, Material, TensorFlow Lite) to their latest stable versions for better build consistency and performance.
 
 ### New in Release 1.5
 - **Fixed Streaming Stability**: Resolved a critical bug in the MJPEG server's InputStream implementation that caused 'The vOICe' to disconnect prematurely during frame transitions.
