@@ -1,6 +1,5 @@
 package com.pranav.voicedepth
 
-import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -8,27 +7,17 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.ImageFormat
 import android.graphics.Matrix
-import android.graphics.Rect
-import android.graphics.YuvImage
-import android.hardware.camera2.CameraCaptureSession
-import android.hardware.camera2.CameraDevice
-import android.hardware.camera2.CameraManager
-import android.media.ImageReader
 import android.os.Binder
 import android.os.Build
-import android.os.Handler
-import android.os.HandlerThread
 import android.os.IBinder
-import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
-
+import com.pranav.voicedepth.camera.ExternalCameraSource
+import com.pranav.voicedepth.camera.ICameraSource
+import com.pranav.voicedepth.camera.InternalCameraSource
 import java.io.ByteArrayOutputStream
 
 class DepthStreamService : Service() {
@@ -38,19 +27,13 @@ class DepthStreamService : Service() {
     private var mjpegServer: MjpegServer? = null
     private var depthEngine: DepthEngine? = null
     
-    private var cameraDevice: CameraDevice? = null
-    private var captureSession: CameraCaptureSession? = null
-    private var cameraThread: HandlerThread? = null
-    private var cameraHandler: Handler? = null
-    private var imageReader: ImageReader? = null
+    private var cameraSource: ICameraSource? = null
     
     private var frameCallback: ((Bitmap) -> Unit)? = null
     private var errorCallback: ((String) -> Unit)? = null
     private var portCallback: ((Int) -> Unit)? = null
-    private var sensorOrientation = 0
     
     // Performance: Reusable objects to prevent GC thrashing
-    private val jpegOutputStream = ByteArrayOutputStream()
     private val rotationMatrix = Matrix()
     private var cachedRotatedBitmap: Bitmap? = null
     private var rotationCanvas: android.graphics.Canvas? = null
@@ -91,6 +74,7 @@ class DepthStreamService : Service() {
        android.util.Log.i("DepthStreamService", "Stopping service and cleaning up resources")
        depthEngine?.stop()
        mjpegServer?.notifyShutdown()
+       stopCamera()
        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
        stopSelf()
     }
@@ -98,6 +82,7 @@ class DepthStreamService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val port = intent?.getIntExtra("port", 8080) ?: 8080
         val isRemote = intent?.getBooleanExtra("isRemote", false) ?: false
+        val useExternalCamera = intent?.getBooleanExtra("useExternalCamera", false) ?: false
         
         startForegroundServiceNotification()
         
@@ -107,7 +92,8 @@ class DepthStreamService : Service() {
                 mjpegServer = MjpegServer(hostname, port)
                 mjpegServer?.start()
                 portCallback?.invoke(port)
-                startCamera()
+                
+                startCamera(useExternalCamera)
             } catch (e: java.net.BindException) {
                 android.util.Log.e("DepthStreamService", "Port $port already in use", e)
                 errorCallback?.invoke("Port $port is already in use.")
@@ -135,7 +121,9 @@ class DepthStreamService : Service() {
             manager.createNotificationChannel(channel)
         }
 
-        val notificationIntent = Intent(this, MainActivity::class.java)
+        val notificationIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
         val pendingIntent = PendingIntent.getActivity(
             this, 0, notificationIntent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
@@ -156,149 +144,46 @@ class DepthStreamService : Service() {
         }
     }
 
-    private fun startCamera() {
-        cameraThread = HandlerThread("CameraBackground").apply { start() }
-        cameraHandler = Handler(cameraThread!!.looper)
-
-        val manager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
-        try {
-            val cameraList = manager.cameraIdList
-            if (cameraList.isEmpty()) {
-                android.util.Log.e("DepthStreamService", "No cameras available")
-                errorCallback?.invoke("No cameras available on this device.")
-                return
-            }
-            val cameraId = cameraList[0]
-            
-            val characteristics = manager.getCameraCharacteristics(cameraId)
-            sensorOrientation = characteristics.get(android.hardware.camera2.CameraCharacteristics.SENSOR_ORIENTATION) ?: 0
-
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                errorCallback?.invoke("Camera permission is required.")
-                return
-            }
-            
-            manager.openCamera(cameraId, object : CameraDevice.StateCallback() {
-                override fun onOpened(camera: CameraDevice) {
-                    cameraDevice = camera
-                    createCaptureSession()
-                }
-
-                override fun onDisconnected(camera: CameraDevice) {
-                    camera.close()
-                    cameraDevice = null
-                }
-
-                override fun onError(camera: CameraDevice, error: Int) {
-                    camera.close()
-                    cameraDevice = null
-                    val errorMsg = when (error) {
-                        ERROR_CAMERA_IN_USE -> "Camera is in use by another app"
-                        ERROR_MAX_CAMERAS_IN_USE -> "Too many cameras open"
-                        ERROR_CAMERA_DISABLED -> "Camera is disabled"
-                        ERROR_CAMERA_DEVICE -> "Camera device error"
-                        ERROR_CAMERA_SERVICE -> "Camera service error"
-                        else -> "Camera error code: $error"
-                    }
-                    android.util.Log.e("DepthStreamService", errorMsg)
-                    errorCallback?.invoke("Camera error: $errorMsg")
-                    stopSelf()
-                }
-            }, cameraHandler)
-        } catch (e: Exception) {
-            android.util.Log.e("DepthStreamService", "Failed to open camera", e)
-            errorCallback?.invoke("Failed to open camera: ${e.message}")
-        }
-    }
-
-    private fun createCaptureSession() {
-        imageReader = ImageReader.newInstance(640, 480, ImageFormat.YUV_420_888, 2)
-        imageReader?.setOnImageAvailableListener({ reader ->
-            val image = reader.acquireLatestImage() ?: return@setOnImageAvailableListener
-            
-            try {
-                val bitmap = imageToBitmap(image)
-                val degrees = sensorOrientation
-
-                // if (bitmap != null) { // Testing only! Return unprocessed camera view
-                //     frameCallback?.invoke(bitmap)
-                //     return@setOnImageAvailableListener
-                // }
-
-                if (bitmap != null) {
-                    val rotatedBitmap = rotateBitmap(bitmap, degrees, cacheIndex = 1)
-                    val depthBitmap = depthEngine?.processFrame(rotatedBitmap)
-                    if (depthBitmap != null) {
-                        mjpegServer?.setFrame(rotateBitmap(depthBitmap, 360 - degrees, cacheIndex = 2)) // Rotate back
-                        frameCallback?.invoke(depthBitmap)
-                    }
-                }
-            } finally {
-                image.close()
-            }
-        }, cameraHandler)
-
-        cameraDevice?.createCaptureSession(listOf(imageReader!!.surface), object : CameraCaptureSession.StateCallback() {
-            override fun onConfigured(session: CameraCaptureSession) {
-                captureSession = session
-                val request = cameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
-                    addTarget(imageReader!!.surface)
-                }
-                session.setRepeatingRequest(request.build(), null, cameraHandler)
-            }
-            override fun onConfigureFailed(p0: CameraCaptureSession) {
-                android.util.Log.e("DepthStreamService", "Camera capture session configuration failed")
-                errorCallback?.invoke("Camera session configuration failed.")
-            }
-        }, cameraHandler)
-    }
-
-    private fun imageToBitmap(image: android.media.Image): Bitmap? {
-        val width = image.width
-        val height = image.height
-        val ySize = width * height
-        val uvSize = width * height / 4
-
-        val nv21 = ByteArray(ySize + uvSize * 2)
-
-        val yBuffer = image.planes[0].buffer.also { it.rewind() } // Y
-        val uBuffer = image.planes[1].buffer.also { it.rewind() } // U
-        val vBuffer = image.planes[2].buffer.also { it.rewind() } // V
-
-        val rowStride = image.planes[0].rowStride
-        var pos = 0
-
-        if (rowStride == width) {
-            yBuffer[nv21, 0, ySize]
-            pos += ySize
+    private fun startCamera(useExternal: Boolean) {
+        stopCamera() // Ensure clean start
+        
+        cameraSource = if (useExternal) {
+            android.util.Log.i("DepthStreamService", "Starting External/USB Camera")
+            ExternalCameraSource(this)
         } else {
-            var yBufferPos = 0
-            while (pos < ySize) {
-                yBuffer.position(yBufferPos)
-                yBuffer[nv21, pos, width]
-                yBufferPos += rowStride
-                pos += width
-            }
+            android.util.Log.i("DepthStreamService", "Starting Internal Camera")
+            InternalCameraSource(this)
         }
 
-        val uvRowStride = image.planes[2].rowStride
-        val uvPixelStride = image.planes[2].pixelStride
-
-        for (row in 0 until height / 2) {
-            for (col in 0 until width / 2) {
-                val vuPos = col * uvPixelStride + row * uvRowStride
-                nv21[pos++] = vBuffer[vuPos]
-                nv21[pos++] = uBuffer[vuPos]
+        cameraSource?.apply {
+            setErrorCallback { errorMsg ->
+                android.util.Log.e("DepthStreamService", "Camera Error: $errorMsg")
+                errorCallback?.invoke(errorMsg)
             }
+            
+            setFrameCallback { bitmap ->
+                val sensorOrientation = getSensorOrientation()
+                processAndStream(bitmap, sensorOrientation)
+            }
+            
+            start()
         }
-
-        val yuvImage = YuvImage(nv21, ImageFormat.NV21, width, height, null)
-        jpegOutputStream.reset()
-        yuvImage.compressToJpeg(Rect(0, 0, width, height), 90, jpegOutputStream)
-        val imageBytes = jpegOutputStream.toByteArray()
-        return BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
     }
-    
+
+    private fun processAndStream(bitmap: Bitmap, degrees: Int) {
+        val rotatedBitmap = rotateBitmap(bitmap, degrees, cacheIndex = 1)
+        val depthBitmap = depthEngine?.processFrame(rotatedBitmap)
+        if (depthBitmap != null) {
+            mjpegServer?.setFrame(rotateBitmap(depthBitmap, 360 - degrees, cacheIndex = 2)) // Rotate back
+            frameCallback?.invoke(depthBitmap)
+        }
+    }
+
+    private fun stopCamera() {
+        cameraSource?.stop()
+        cameraSource = null
+    }
+
     private fun rotateBitmap(bitmap: Bitmap, degrees: Int, cacheIndex: Int = 1): Bitmap {
         val normalizedDegrees = (degrees % 360 + 360) % 360
         if (normalizedDegrees == 0) return bitmap
@@ -346,16 +231,6 @@ class DepthStreamService : Service() {
         depthEngine?.stop()
         depthEngine = null
 
-        captureSession?.close()
-        captureSession = null
-
-        cameraDevice?.close()
-        cameraDevice = null
-        
-        imageReader?.close()
-        imageReader = null
-
-        cameraThread?.quitSafely()
-        cameraThread = null
+        stopCamera()
     }
 }

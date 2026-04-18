@@ -11,8 +11,8 @@ android {
         applicationId "com.pranav.voicedepth"
         minSdk 24
         targetSdk 34
-        versionCode 6
-        versionName "1.6"
+        versionCode 7
+        versionName "1.7"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -48,6 +48,9 @@ dependencies {
     
     // HTTP Server (NanoHTTPD)
     implementation "org.nanohttpd:nanohttpd:2.3.1"
+
+    // UVC Camera Support
+    implementation "com.herohan:UVCAndroid:1.0.11"
 
     testImplementation "junit:junit:4.13.2"
     androidTestImplementation "androidx.test.ext:junit:1.1.5"

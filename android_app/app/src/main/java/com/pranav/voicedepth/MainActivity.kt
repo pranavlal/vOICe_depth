@@ -30,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var startButton: Button
     private lateinit var stopButton: Button
     private lateinit var remoteSwitch: SwitchCompat
+    private lateinit var usbCameraSwitch: SwitchCompat
 
     private var streamService: DepthStreamService? = null
     private var isBound = false
@@ -71,6 +72,7 @@ class MainActivity : AppCompatActivity() {
         startButton = findViewById(R.id.startButton)
         stopButton = findViewById(R.id.stopButton)
         remoteSwitch = findViewById(R.id.remoteSwitch)
+        usbCameraSwitch = findViewById(R.id.usbCameraSwitch)
 
         startButton.setOnClickListener { startServer() }
         stopButton.setOnClickListener { stopServer() }
@@ -95,6 +97,16 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Restart server to apply network changes", Toast.LENGTH_LONG).show()
             }
             updateUrlDisplay(8080)
+        }
+
+        usbCameraSwitch.setOnCheckedChangeListener { _, isChecked ->
+            val camera = if (isChecked) "USB/External" else "Internal"
+            statusTextView.announceForAccessibility("Camera source changed to $camera")
+            android.util.Log.i("MainActivity", "USB Camera toggle: $isChecked")
+            
+            if (startButton.isEnabled == false) {
+                Toast.makeText(this, "Restart server to switch camera source", Toast.LENGTH_LONG).show()
+            }
         }
         
         depthImageView.contentDescription = "Depth preview idle"
@@ -130,6 +142,7 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(this, DepthStreamService::class.java)
         intent.putExtra("port", 8080)
         intent.putExtra("isRemote", remoteSwitch.isChecked)
+        intent.putExtra("useExternalCamera", usbCameraSwitch.isChecked)
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)
@@ -145,6 +158,7 @@ class MainActivity : AppCompatActivity() {
         startButton.isEnabled = false
         stopButton.isEnabled = true
         remoteSwitch.isEnabled = false // Disable toggle while running to avoid confusion
+        usbCameraSwitch.isEnabled = false
     }
 
 
@@ -158,6 +172,7 @@ class MainActivity : AppCompatActivity() {
         startButton.isEnabled = true
         stopButton.isEnabled = false
         remoteSwitch.isEnabled = true
+        usbCameraSwitch.isEnabled = true
         
         updateUrlDisplay(8080)
     }
